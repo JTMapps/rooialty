@@ -1,9 +1,10 @@
-import { useState } from "react"; // ✅ FIX
+import { useState } from "react";
 import useAuth from "../hooks/useAuth";
 import { useCartContext as useCart } from "../context/CartContext";
 import useMenu from "../hooks/useMenu";
 import Header from "../components/Header";
 import MenuSection from "../components/MenuSection";
+import WalkinPanel from "../components/WalkinPanel";
 import { useNavigate } from "react-router-dom";
 
 const CATEGORY_ORDER = [
@@ -15,11 +16,11 @@ const CATEGORY_ORDER = [
 ];
 
 const ICONS = {
-  "URBAN KOTAS": "🌯",
-  "ROOIALTY MEALS": "👑",
-  "TO SHARE": "🤝",
-  "WING BAR": "🍗",
-  "COLD SERVES": "🧊",
+  "URBAN KOTAS":   "🌯",
+  "ROOIALTY MEALS":"👑",
+  "TO SHARE":      "🤝",
+  "WING BAR":      "🍗",
+  "COLD SERVES":   "🧊",
 };
 
 export default function Landing() {
@@ -28,14 +29,22 @@ export default function Landing() {
   const { quantities, cartCount, addItem, removeItem } = useCart();
 
   const navigate = useNavigate();
-  const [adding, setAdding] = useState(null); // ✅ now works
+  const [adding, setAdding] = useState(null);
 
   if (loading) return <div>Loading...</div>;
+  if (!user)   return <div>Please login</div>;
 
-  if (!user) return <div>Please login</div>;
+  // ── Clerk view: walk-in order panel ──────────────────────────────────────
+  if (role === "clerk") {
+    return (
+      <div>
+        <Header />
+        <WalkinPanel />
+      </div>
+    );
+  }
 
-  if (role === "clerk") return <Header />;
-
+  // ── Customer view ─────────────────────────────────────────────────────────
   return (
     <div>
       <Header />
