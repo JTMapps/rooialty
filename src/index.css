@@ -1,0 +1,153 @@
+/* ─────────────────────────────────────────────
+   src/index.css
+   Global CSS custom properties + resets.
+   All design tokens live here as CSS vars so
+   every inline style and className can reference them.
+   ───────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&display=swap');
+
+/* ── Design tokens ─────────────────────────── */
+:root {
+  /* Brand fire */
+  --fire:       #f97316;
+  --fire-hover: #fb923c;
+  --gold:       #f59e0b;
+  --ember:      #dc2626;
+
+  /* Backgrounds */
+  --smoke: #111111;
+  --ash:   #1c1c1c;
+  --char:  #242424;
+  --pit:   #2a2a2a;
+  --coal:  #3a3a3a;
+
+  /* Text */
+  --bone:  #f5f0e8;
+  --cream: #fef3c7;
+  --muted: #6b6b6b;
+
+  /* Typography */
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body:    'Barlow Condensed', sans-serif;
+  --font-sans:    system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Radii */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Shadows */
+  --shadow-card:  0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-glow:  0 0 24px rgba(249, 115, 22, 0.25);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Global reset ──────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--smoke);
+  color: var(--bone);
+  font-family: var(--font-sans);
+  min-height: 100svh;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar (webkit) ────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--coal); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Focus visible ─────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--fire);
+  outline-offset: 2px;
+}
+
+/* ── Utility classes ───────────────────────── */
+
+/* Buttons — hover / active states that can't be in inline styles */
+.btn-primary         { background: var(--fire); color: #000; }
+.btn-primary:hover   { background: var(--fire-hover); }
+.btn-primary:active  { transform: scale(0.98); }
+
+.btn-secondary       { background: transparent; color: var(--fire); border: 1px solid var(--fire); }
+.btn-secondary:hover { background: rgba(249,115,22,0.1); }
+
+.btn-ghost           { background: transparent; color: var(--muted); border: 1px solid var(--pit); }
+.btn-ghost:hover     { border-color: var(--ember); color: var(--ember); }
+
+.btn-danger          { background: var(--ember); color: #fff; }
+.btn-danger:hover    { background: #ef4444; }
+
+/* Input focus */
+.input-base:focus    { border-color: var(--fire); }
+
+/* Status badge colours */
+.badge-pending   { background: #f59e0b; color: #000; }
+.badge-confirmed { background: #3b82f6; color: #fff; }
+.badge-ready     { background: #a855f7; color: #fff; }
+.badge-completed { background: #22c55e; color: #000; }
+.badge-cancelled { background: #ef4444; color: #fff; }
+
+/* Gradient heading text */
+.text-gradient {
+  background: linear-gradient(160deg, #fff 30%, var(--gold) 70%, var(--fire) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Fire divider bar */
+.divider-fire {
+  width: 48px;
+  height: 2px;
+  background: var(--fire);
+}
+
+/* Full-width fire divider */
+.divider-full {
+  width: 100%;
+  height: 1px;
+  background: var(--pit);
+}
+
+/* Fade-in utility */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.2s ease forwards; }
+
+/* Loader spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--pit);
+  border-top-color: var(--fire);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
