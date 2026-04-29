@@ -1,9 +1,11 @@
 // src/components/WalkinPanel.jsx
 //
 // Renders in place of the customer menu when a clerk visits Landing ("/").
-// Left column  — full menu picker with category sections and qty controls.
-// Right column — live order summary, optional ETA, place button.
-// On success   — order is inserted as confirmed, panel resets ready for the next order.
+// Desktop: Left column = menu picker, Right column = sticky order summary.
+// Mobile:  Single column. Summary collapses into a bottom drawer/bar;
+//          tap the bar to expand/collapse the full summary.
+//
+// On success — order is inserted as confirmed, panel resets for the next order.
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -26,16 +28,29 @@ const CATEGORY_ICONS = {
   "COLD SERVES":    "🧊",
 };
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function WalkinPanel() {
   const { user, profile } = useAuth();
+  const isMobile = useIsMobile();
 
   const [menuGrouped, setMenuGrouped] = useState({});
   const [menuLoading, setMenuLoading] = useState(true);
-  const [selected, setSelected]       = useState({});   // itemId → { item, qty }
-  const [etaMins,  setEtaMins]        = useState("");
-  const [placing,  setPlacing]        = useState(false);
-  const [error,    setError]          = useState("");
-  const [success,  setSuccess]        = useState(false);
+  const [selected,    setSelected]    = useState({});   // itemId → { item, qty }
+  const [etaMins,     setEtaMins]     = useState("");
+  const [placing,     setPlacing]     = useState(false);
+  const [error,       setError]       = useState("");
+  const [success,     setSuccess]     = useState(false);
+  // Mobile: controls whether the summary drawer is expanded
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   // ── Load menu ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -81,12 +96,13 @@ export default function WalkinPanel() {
     setEtaMins("");
     setError("");
     setSuccess(false);
+    setSummaryOpen(false);
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const lineItems  = Object.values(selected);
-  const total      = lineItems.reduce((sum, { item, qty }) => sum + item.price * qty, 0);
-  const itemCount  = lineItems.reduce((sum, { qty }) => sum + qty, 0);
+  const lineItems = Object.values(selected);
+  const total     = lineItems.reduce((sum, { item, qty }) => sum + item.price * qty, 0);
+  const itemCount = lineItems.reduce((sum, { qty }) => sum + qty, 0);
 
   // ── Place order ───────────────────────────────────────────────────────────
   const handlePlace = async () => {
@@ -133,7 +149,7 @@ export default function WalkinPanel() {
       setSuccess(true);
       setSelected({});
       setEtaMins("");
-      // Auto-clear success banner after 3 s
+      setSummaryOpen(false);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error("walk-in order error:", err);
@@ -143,11 +159,177 @@ export default function WalkinPanel() {
     }
   };
 
+  // ── Summary panel contents (shared between desktop sidebar & mobile drawer)
+  const summaryContents = (
+    <>
+      {lineItems.length === 0 ? (
+        <div style={s.summaryEmpty}>
+          <span style={{ fontSize: 32 }}>🧾</span>
+          <p style={s.summaryEmptyText}>No items added yet</p>
+          <p style={{ ...s.summaryEmptyText, fontSize: 12, marginTop: 2 }}>
+            Pick items from the menu
+          </p>
+        </div>
+      ) : (
+        <div style={s.summaryLines}>
+          {lineItems.map(({ item, qty }) => (
+            <div key={item.id} style={s.summaryLine}>
+              <div style={s.summaryLineName}>{item.name}</div>
+              <div style={s.summaryLineRight}>
+                <button
+                  style={s.removeBtn}
+                  onClick={() => adjust(item, -qty)}
+                  title="Remove"
+                >
+                  ✕
+                </button>
+                <span style={{ color: "var(--muted)", fontSize: 13 }}>×{qty}</span>
+                <span style={{ ...text.price, fontSize: 14 }}>
+                  R{(item.price * qty).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ETA */}
+      <div style={s.etaBlock}>
+        <label style={{ ...text.label, display: "block", marginBottom: 6 }}>
+          ETA (minutes) — optional
+        </label>
+        <input
+          style={s.etaInput}
+          type="number"
+          min="1"
+          placeholder="e.g. 15"
+          value={etaMins}
+          onChange={(e) => setEtaMins(e.target.value)}
+        />
+      </div>
+
+      {/* Total */}
+      {lineItems.length > 0 && (
+        <div style={s.totalRow}>
+          <span style={s.totalLabel}>Total</span>
+          <span style={{ ...text.price, fontSize: 28 }}>
+            R{total.toFixed(2)}
+          </span>
+        </div>
+      )}
+
+      {/* Clerk note */}
+      <p style={s.clerkNote}>
+        Logged as{" "}
+        <span style={{ color: "var(--fire)" }}>
+          @{profile?.username ?? "clerk"}
+        </span>
+        {" "}· Confirmed immediately
+      </p>
+
+      {error && (
+        <p style={{ ...text.error, marginBottom: 8 }}>{error}</p>
+      )}
+
+      <button
+        className="btn-primary"
+        style={{
+          ...btn.primary,
+          ...btn.full,
+          marginTop: 4,
+          opacity: placing || lineItems.length === 0 ? 0.6 : 1,
+        }}
+        disabled={placing || lineItems.length === 0}
+        onClick={handlePlace}
+      >
+        {placing
+          ? "Placing…"
+          : itemCount > 0
+            ? `Place Order · ${itemCount} item${itemCount !== 1 ? "s" : ""} →`
+            : "Place Walk-in Order →"}
+      </button>
+
+      {lineItems.length > 0 && (
+        <button style={s.clearBtn} onClick={reset}>
+          Clear order
+        </button>
+      )}
+    </>
+  );
+
+  // ── Menu column (same on both layouts) ────────────────────────────────────
+  const menuColumn = (
+    <div style={s.menuCol}>
+      {menuLoading ? (
+        <div style={s.center}><span className="spinner" /></div>
+      ) : (
+        CATEGORY_ORDER.filter((cat) => menuGrouped[cat]?.length).map((cat) => (
+          <section key={cat} style={s.catBlock}>
+            <div style={s.catHeader}>
+              <span style={s.catIcon}>{CATEGORY_ICONS[cat]}</span>
+              <h2 style={s.catTitle}>{cat}</h2>
+            </div>
+
+            <div style={s.itemGrid}>
+              {menuGrouped[cat].map((item) => {
+                const qty        = selected[item.id]?.qty ?? 0;
+                const isSelected = qty > 0;
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      ...s.itemCard,
+                      opacity:     item.in_stock ? 1 : 0.4,
+                      borderColor: isSelected ? "var(--fire)" : "var(--pit)",
+                      background:  isSelected
+                        ? "rgba(249,115,22,0.07)"
+                        : "var(--ash)",
+                    }}
+                  >
+                    <div style={s.itemTop}>
+                      <span style={s.itemName}>{item.name}</span>
+                      {!item.in_stock && (
+                        <span style={s.soldOut}>Sold Out</span>
+                      )}
+                    </div>
+
+                    <div style={s.itemBottom}>
+                      <span style={{ ...text.price, fontSize: 16 }}>
+                        R{Number(item.price).toFixed(2)}
+                      </span>
+
+                      {qty === 0 ? (
+                        <button
+                          style={{ ...btn.secondary, ...btn.sm, fontSize: 12, padding: "5px 14px" }}
+                          disabled={!item.in_stock}
+                          onClick={() => adjust(item, 1)}
+                        >
+                          Add
+                        </button>
+                      ) : (
+                        <div style={s.qtyRow}>
+                          <button style={btn.qty} onClick={() => adjust(item, -1)}>−</button>
+                          <span style={s.qtyNum}>{qty}</span>
+                          <button style={btn.qty} onClick={() => adjust(item, 1)}>+</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={s.page}>
+    <div style={{ ...s.page, paddingBottom: isMobile ? 72 : 60 }}>
 
-      {/* ── Page heading ── */}
+      {/* Page heading */}
       <div style={s.pageHead}>
         <div>
           <div style={s.eyebrow}>Counter</div>
@@ -159,7 +341,7 @@ export default function WalkinPanel() {
         </div>
       </div>
 
-      {/* ── Success banner ── */}
+      {/* Success banner */}
       {success && (
         <div style={s.successBanner}>
           <span style={{ fontSize: 18 }}>✅</span>
@@ -168,183 +350,66 @@ export default function WalkinPanel() {
         </div>
       )}
 
-      {/* ── Two-column layout ── */}
-      <div style={s.layout}>
-
-        {/* ── Left: menu picker ── */}
-        <div style={s.menuCol}>
-          {menuLoading ? (
-            <div style={s.center}><span className="spinner" /></div>
-          ) : (
-            CATEGORY_ORDER.filter((cat) => menuGrouped[cat]?.length).map((cat) => (
-              <section key={cat} style={s.catBlock}>
-
-                <div style={s.catHeader}>
-                  <span style={s.catIcon}>{CATEGORY_ICONS[cat]}</span>
-                  <h2 style={s.catTitle}>{cat}</h2>
-                </div>
-
-                <div style={s.itemGrid}>
-                  {menuGrouped[cat].map((item) => {
-                    const qty       = selected[item.id]?.qty ?? 0;
-                    const isSelected = qty > 0;
-
-                    return (
-                      <div
-                        key={item.id}
-                        style={{
-                          ...s.itemCard,
-                          opacity:     item.in_stock ? 1 : 0.4,
-                          borderColor: isSelected ? "var(--fire)" : "var(--pit)",
-                          background:  isSelected
-                            ? "rgba(249,115,22,0.07)"
-                            : "var(--ash)",
-                        }}
-                      >
-                        <div style={s.itemTop}>
-                          <span style={s.itemName}>{item.name}</span>
-                          {!item.in_stock && (
-                            <span style={s.soldOut}>Sold Out</span>
-                          )}
-                        </div>
-
-                        <div style={s.itemBottom}>
-                          <span style={{ ...text.price, fontSize: 16 }}>
-                            R{Number(item.price).toFixed(2)}
-                          </span>
-
-                          {qty === 0 ? (
-                            <button
-                              style={{
-                                ...btn.secondary,
-                                ...btn.sm,
-                                fontSize:  12,
-                                padding:   "5px 14px",
-                              }}
-                              disabled={!item.in_stock}
-                              onClick={() => adjust(item, 1)}
-                            >
-                              Add
-                            </button>
-                          ) : (
-                            <div style={s.qtyRow}>
-                              <button style={btn.qty} onClick={() => adjust(item, -1)}>−</button>
-                              <span style={s.qtyNum}>{qty}</span>
-                              <button style={btn.qty} onClick={() => adjust(item, 1)}>+</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            ))
-          )}
-        </div>
-
-        {/* ── Right: order summary ── */}
-        <div style={s.summaryCol}>
-          <div style={s.summaryInner}>
-
-            <div style={s.summaryHead}>Order Summary</div>
-
-            {/* Empty state */}
-            {lineItems.length === 0 ? (
-              <div style={s.summaryEmpty}>
-                <span style={{ fontSize: 32 }}>🧾</span>
-                <p style={s.summaryEmptyText}>No items added yet</p>
-                <p style={{ ...s.summaryEmptyText, fontSize: 12, marginTop: 2 }}>
-                  Pick items from the menu
-                </p>
-              </div>
-            ) : (
-              <div style={s.summaryLines}>
-                {lineItems.map(({ item, qty }) => (
-                  <div key={item.id} style={s.summaryLine}>
-                    <div style={s.summaryLineName}>{item.name}</div>
-                    <div style={s.summaryLineRight}>
-                      <button
-                        style={s.removeBtn}
-                        onClick={() => adjust(item, -qty)} // remove all
-                        title="Remove"
-                      >
-                        ✕
-                      </button>
-                      <span style={{ color: "var(--muted)", fontSize: 13 }}>×{qty}</span>
-                      <span style={{ ...text.price, fontSize: 14 }}>
-                        R{(item.price * qty).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ETA */}
-            <div style={s.etaBlock}>
-              <label style={{ ...text.label, display: "block", marginBottom: 6 }}>
-                ETA (minutes) — optional
-              </label>
-              <input
-                style={s.etaInput}
-                type="number"
-                min="1"
-                placeholder="e.g. 15"
-                value={etaMins}
-                onChange={(e) => setEtaMins(e.target.value)}
-              />
+      {/* ── DESKTOP: two-column side-by-side ── */}
+      {!isMobile && (
+        <div style={s.layout}>
+          {menuColumn}
+          <div style={s.summaryCol}>
+            <div style={s.summaryInner}>
+              <div style={s.summaryHead}>Order Summary</div>
+              {summaryContents}
             </div>
-
-            {/* Total */}
-            {lineItems.length > 0 && (
-              <div style={s.totalRow}>
-                <span style={s.totalLabel}>Total</span>
-                <span style={{ ...text.price, fontSize: 28 }}>
-                  R{total.toFixed(2)}
-                </span>
-              </div>
-            )}
-
-            {/* Clerk note */}
-            <p style={s.clerkNote}>
-              Logged as{" "}
-              <span style={{ color: "var(--fire)" }}>
-                @{profile?.username ?? "clerk"}
-              </span>
-              {" "}· Confirmed immediately
-            </p>
-
-            {error && (
-              <p style={{ ...text.error, marginBottom: 8 }}>{error}</p>
-            )}
-
-            <button
-              className="btn-primary"
-              style={{
-                ...btn.primary,
-                ...btn.full,
-                marginTop: 4,
-                opacity: placing || lineItems.length === 0 ? 0.6 : 1,
-              }}
-              disabled={placing || lineItems.length === 0}
-              onClick={handlePlace}
-            >
-              {placing
-                ? "Placing…"
-                : itemCount > 0
-                  ? `Place Order · ${itemCount} item${itemCount !== 1 ? "s" : ""} →`
-                  : "Place Walk-in Order →"}
-            </button>
-
-            {lineItems.length > 0 && (
-              <button style={s.clearBtn} onClick={reset}>
-                Clear order
-              </button>
-            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── MOBILE: full-width menu + sticky bottom drawer ── */}
+      {isMobile && (
+        <>
+          {/* Full-width menu — gets bottom padding so drawer never hides items */}
+          {menuColumn}
+
+          {/* Sticky bottom bar — always visible */}
+          <div style={mob.drawerBar} onClick={() => setSummaryOpen((o) => !o)}>
+            <div style={mob.drawerBarLeft}>
+              <span style={mob.drawerCartIcon}>🧾</span>
+              {itemCount > 0 ? (
+                <>
+                  <span style={mob.drawerCount}>
+                    {itemCount} item{itemCount !== 1 ? "s" : ""}
+                  </span>
+                  <span style={{ ...text.price, fontSize: 16 }}>
+                    R{total.toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <span style={mob.drawerEmpty}>Order Summary</span>
+              )}
+            </div>
+            <span style={mob.drawerChevron}>
+              {summaryOpen ? "▼" : "▲"}
+            </span>
+          </div>
+
+          {/* Expandable drawer panel */}
+          {summaryOpen && (
+            <>
+              {/* Dim overlay — tap to close */}
+              <div
+                style={mob.overlay}
+                onClick={() => setSummaryOpen(false)}
+              />
+              <div style={mob.drawer}>
+                <div style={mob.drawerHandle} />
+                <div style={s.summaryHead}>Order Summary</div>
+                <div style={{ overflowY: "auto", flex: 1 }}>
+                  {summaryContents}
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -354,10 +419,7 @@ const s = {
   page: {
     minHeight:  "100vh",
     background: "var(--smoke)",
-    paddingBottom: 60,
   },
-
-  // Page heading
   pageHead: {
     display:        "flex",
     justifyContent: "space-between",
@@ -403,21 +465,19 @@ const s = {
     letterSpacing: "0.08em",
     color:         "var(--fire)",
   },
-
-  // Success banner
   successBanner: {
-    display:        "flex",
-    alignItems:     "center",
-    gap:            12,
-    margin:         "20px 24px 0",
-    padding:        "12px 16px",
-    background:     "rgba(34,197,94,0.12)",
-    border:         "1px solid rgba(34,197,94,0.3)",
-    borderRadius:   "4px",
-    fontFamily:     "var(--font-body)",
-    fontSize:       14,
-    letterSpacing:  "0.06em",
-    color:          "#22c55e",
+    display:       "flex",
+    alignItems:    "center",
+    gap:           12,
+    margin:        "20px 24px 0",
+    padding:       "12px 16px",
+    background:    "rgba(34,197,94,0.12)",
+    border:        "1px solid rgba(34,197,94,0.3)",
+    borderRadius:  "4px",
+    fontFamily:    "var(--font-body)",
+    fontSize:      14,
+    letterSpacing: "0.06em",
+    color:         "#22c55e",
   },
   successBtn: {
     marginLeft:    "auto",
@@ -433,20 +493,17 @@ const s = {
     cursor:        "pointer",
   },
 
-  // Two-column layout
+  // Desktop two-column layout
   layout: {
-    display:   "flex",
-    gap:       0,
-    marginTop: 24,
+    display:    "flex",
+    gap:        0,
+    marginTop:  24,
     alignItems: "flex-start",
   },
-
-  // Menu column
   menuCol: {
     flex:      1,
     minWidth:  0,
     padding:   "0 24px 40px",
-    overflowY: "auto",
   },
   center: {
     display:        "flex",
@@ -454,9 +511,7 @@ const s = {
     justifyContent: "center",
     padding:        60,
   },
-  catBlock: {
-    marginBottom: 36,
-  },
+  catBlock:  { marginBottom: 36 },
   catHeader: {
     display:       "flex",
     alignItems:    "center",
@@ -465,7 +520,7 @@ const s = {
     paddingBottom: 8,
     borderBottom:  "1px solid var(--pit)",
   },
-  catIcon: { fontSize: 18 },
+  catIcon:  { fontSize: 18 },
   catTitle: {
     fontFamily:    "var(--font-display)",
     fontSize:      26,
@@ -530,22 +585,22 @@ const s = {
     textAlign:  "center",
   },
 
-  // Summary column (sticky sidebar)
+  // Desktop summary sidebar
   summaryCol: {
-    width:     320,
+    width:      320,
     flexShrink: 0,
-    position:  "sticky",
-    top:       0,
-    maxHeight: "100vh",
-    overflowY: "auto",
-    borderLeft:"1px solid var(--pit)",
-    background:"var(--char)",
+    position:   "sticky",
+    top:        0,
+    maxHeight:  "100vh",
+    overflowY:  "auto",
+    borderLeft: "1px solid var(--pit)",
+    background: "var(--char)",
   },
   summaryInner: {
-    padding: "20px",
-    display: "flex",
+    padding:       "20px",
+    display:       "flex",
     flexDirection: "column",
-    minHeight: "100%",
+    minHeight:     "100%",
   },
   summaryHead: {
     fontFamily:    "var(--font-display)",
@@ -603,14 +658,14 @@ const s = {
     flexShrink: 0,
   },
   removeBtn: {
-    background:  "transparent",
-    border:      "none",
-    color:       "var(--muted)",
-    fontSize:    10,
-    cursor:      "pointer",
-    padding:     "2px 4px",
-    lineHeight:  1,
-    opacity:     0.6,
+    background: "transparent",
+    border:     "none",
+    color:      "var(--muted)",
+    fontSize:   10,
+    cursor:     "pointer",
+    padding:    "2px 4px",
+    lineHeight: 1,
+    opacity:    0.6,
   },
   etaBlock: {
     marginTop:    16,
@@ -664,5 +719,83 @@ const s = {
     padding:       0,
     textAlign:     "center",
     width:         "100%",
+  },
+};
+
+// ── Mobile-only styles ────────────────────────────────────────────────────────
+const mob = {
+  // Dim backdrop behind the drawer
+  overlay: {
+    position:   "fixed",
+    inset:      0,
+    zIndex:     90,
+    background: "rgba(0,0,0,0.55)",
+  },
+  // Sticky bar always visible at the bottom
+  drawerBar: {
+    position:       "fixed",
+    bottom:         0,
+    left:           0,
+    right:          0,
+    zIndex:         100,
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    padding:        "14px 20px",
+    paddingBottom:  "max(14px, env(safe-area-inset-bottom, 14px))",
+    background:     "var(--char)",
+    borderTop:      "1px solid var(--pit)",
+    cursor:         "pointer",
+    WebkitTapHighlightColor: "transparent",
+  },
+  drawerBarLeft: {
+    display:    "flex",
+    alignItems: "center",
+    gap:        10,
+  },
+  drawerCartIcon: {
+    fontSize: 18,
+  },
+  drawerCount: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      14,
+    fontWeight:    600,
+    letterSpacing: "0.06em",
+    color:         "var(--bone)",
+  },
+  drawerEmpty: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      16,
+    letterSpacing: "0.1em",
+    color:         "var(--muted)",
+  },
+  drawerChevron: {
+    fontFamily: "var(--font-sans)",
+    fontSize:   12,
+    color:      "var(--muted)",
+  },
+  // Slide-up drawer panel
+  drawer: {
+    position:      "fixed",
+    left:          0,
+    right:         0,
+    bottom:        0,
+    zIndex:        101,
+    maxHeight:     "80vh",
+    background:    "var(--char)",
+    borderTop:     "1px solid var(--pit)",
+    borderRadius:  "16px 16px 0 0",
+    padding:       "12px 20px 32px",
+    display:       "flex",
+    flexDirection: "column",
+    overflowY:     "auto",
+  },
+  drawerHandle: {
+    width:        40,
+    height:       4,
+    borderRadius: "2px",
+    background:   "var(--pit)",
+    margin:       "0 auto 16px",
+    flexShrink:   0,
   },
 };
