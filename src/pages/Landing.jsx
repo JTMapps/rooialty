@@ -5,7 +5,6 @@ import useMenu from "../hooks/useMenu";
 import Header from "../components/Header";
 import MenuSection from "../components/MenuSection";
 import WalkinPanel from "../components/WalkinPanel";
-import { useNavigate } from "react-router-dom";
 
 const CATEGORY_ORDER = [
   "URBAN KOTAS",
@@ -26,14 +25,12 @@ const ICONS = {
 export default function Landing() {
   const { user, role, loading } = useAuth();
   const { grouped, loading: menuLoading } = useMenu();
-  const { quantities, cartCount, addItem, removeItem } = useCart();
+  const { quantities, addItem, removeItem } = useCart();
 
-  const navigate = useNavigate();
   const [adding, setAdding] = useState(null);
 
   // ProtectedRoute already blocks unauthenticated users.
-  // We only need to wait here if the profile (and therefore role) is
-  // still resolving after the user object is confirmed.
+  // Wait here only if profile (and therefore role) is still resolving.
   if (loading || (user && role === null)) {
     return (
       <div style={styles.loader}>
@@ -57,31 +54,27 @@ export default function Landing() {
     <div>
       <Header />
 
-      {cartCount > 0 && (
-        <button onClick={() => navigate("/checkout")}>
-          Checkout ({cartCount})
-        </button>
-      )}
-
       {menuLoading ? (
-        <p>Loading menu...</p>
+        <p style={styles.menuLoading}>Loading menu…</p>
       ) : (
-        CATEGORY_ORDER.map(
-          (cat) =>
-            grouped[cat] && (
-              <MenuSection
-                key={cat}
-                title={cat}
-                icon={ICONS[cat]}
-                items={grouped[cat]}
-                quantities={quantities}
-                addItem={addItem}
-                removeItem={removeItem}
-                adding={adding}
-                setAdding={setAdding}
-              />
-            )
-        )
+        <div style={styles.menuWrap}>
+          {CATEGORY_ORDER.map(
+            (cat) =>
+              grouped[cat] && (
+                <MenuSection
+                  key={cat}
+                  title={cat}
+                  icon={ICONS[cat]}
+                  items={grouped[cat]}
+                  quantities={quantities}
+                  addItem={addItem}
+                  removeItem={removeItem}
+                  adding={adding}
+                  setAdding={setAdding}
+                />
+              )
+          )}
+        </div>
       )}
     </div>
   );
@@ -93,5 +86,17 @@ const styles = {
     display:        "flex",
     alignItems:     "center",
     justifyContent: "center",
+  },
+  menuLoading: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      14,
+    letterSpacing: "0.1em",
+    color:         "var(--muted)",
+    padding:       "40px 24px",
+  },
+  menuWrap: {
+    maxWidth: 900,
+    margin:   "0 auto",
+    padding:  "24px 16px 80px",
   },
 };
