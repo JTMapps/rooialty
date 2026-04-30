@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { btn, card, input, layout, text } from "../styles/components";
 
 export default function Register() {
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [focused,  setFocused]  = useState(null);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -27,55 +29,107 @@ export default function Register() {
     navigate("/login", { replace: true });
   };
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>ROOIALTY</h1>
-        <p style={styles.subtitle}>Create Account</p>
+  const inputStyle = (field) => ({
+    ...input.base,
+    ...(focused === field ? input.focused : {}),
+  });
 
-        <form onSubmit={handleRegister} style={styles.form}>
+  return (
+    <div style={layout.centered}>
+      <div style={card.auth}>
+
+        {/* Logo */}
+        <div style={s.eyebrow}>Est. in the Streets</div>
+        <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
+        <div style={s.divider} />
+        <p style={s.subtitle}>Create an account</p>
+
+        <form onSubmit={handleRegister} style={s.form}>
           <input
-            style={styles.input}
+            style={inputStyle("email")}
+            className="input-base"
+            type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onFocus={() => setFocused("email")}
+            onBlur={() => setFocused(null)}
             required
           />
           <input
-            style={styles.input}
+            style={inputStyle("password")}
+            className="input-base"
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onFocus={() => setFocused("password")}
+            onBlur={() => setFocused(null)}
             required
           />
-          <button style={styles.button} disabled={loading}>
-            {loading ? "Creating..." : "Create Account"}
+          <button
+            style={{ ...btn.primary, ...btn.full, opacity: loading ? 0.7 : 1 }}
+            className="btn-primary"
+            disabled={loading}
+          >
+            {loading ? "Creating account…" : "Create Account"}
           </button>
         </form>
 
-        {error && <p style={styles.error}>{error}</p>}
+        {error && <p style={text.error}>{error}</p>}
 
-        <p style={styles.linkText}>
+        <p style={s.linkText}>
           Already have an account?{" "}
-          <span onClick={() => navigate("/login")} style={styles.link}>
+          <span onClick={() => navigate("/login")} style={text.link}>
             Login
           </span>
         </p>
+
       </div>
     </div>
   );
 }
 
-const styles = {
-  page: { minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f7f7f8" },
-  card: { width: 380, padding: 30, borderRadius: 14, background: "white", border: "1px solid #e5e4e7", boxShadow: "0 10px 25px rgba(0,0,0,0.06)", textAlign: "center" },
-  title: { margin: 0, letterSpacing: "2px" },
-  subtitle: { marginBottom: 20, color: "#666" },
-  form: { display: "flex", flexDirection: "column", gap: 12 },
-  input: { padding: 12, borderRadius: 8, border: "1px solid #ddd", outline: "none" },
-  button: { padding: 12, background: "#aa3bff", color: "white", border: "none", borderRadius: 8, cursor: "pointer" },
-  error: { color: "red", marginTop: 10, fontSize: 14 },
-  linkText: { marginTop: 15, fontSize: 14 },
-  link: { color: "#aa3bff", cursor: "pointer" },
+const s = {
+  eyebrow: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",
+    letterSpacing: "0.3em",
+    textTransform: "uppercase",
+    color:         "var(--fire)",
+    marginBottom:  "6px",
+  },
+  title: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      "56px",
+    lineHeight:    1,
+    letterSpacing: "0.04em",
+    margin:        "0 0 12px",
+  },
+  divider: {
+    width:      "40px",
+    height:     "2px",
+    background: "var(--fire)",
+    margin:     "0 auto 16px",
+  },
+  subtitle: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      "13px",
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color:         "var(--muted)",
+    marginBottom:  "24px",
+  },
+  form: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           "10px",
+  },
+  linkText: {
+    marginTop:     "20px",
+    fontSize:      "13px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
+    letterSpacing: "0.05em",
+  },
 };
