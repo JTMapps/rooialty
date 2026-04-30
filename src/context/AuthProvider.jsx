@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 const AuthContext = createContext(null);
 export default AuthContext;
 
-// Fetch the profile row, or create it if handle_new_user trigger missed it.
+// Fetch the profile row, or create it if missing
 async function fetchOrCreateProfile(user) {
   const { data: existing } = await supabase
     .from("profiles")
@@ -14,7 +14,6 @@ async function fetchOrCreateProfile(user) {
 
   if (existing) return existing;
 
-  // Trigger may have failed or not committed yet — create the row ourselves.
   const username =
     user.user_metadata?.username ??
     user.email?.split("@")[0] ??
@@ -30,46 +29,48 @@ async function fetchOrCreateProfile(user) {
 }
 
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    // Bootstrap owns the initial load. It reads the stored session and
-    // resolves profile before setting loading=false. This is the only
-    // place that drives the first render — onAuthStateChange skips
-    // INITIAL_SESSION to avoid racing with it.
+    // 🔥 BOOTSTRAP (FIXED)
     const bootstrap = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
 
-        if (session?.user) {
-          const p = await fetchOrCreateProfile(session.user);
-          if (mounted) {
-            setUser(session.user);
-            setProfile(p);
-          }
+        const sessionUser = session?.user ?? null;
+
+        // ✅ 1. Set user immediately (DO NOT WAIT FOR PROFILE)
+        setUser(sessionUser);
+
+        // ✅ 2. Stop loading immediately after auth resolves
+        setLoading(false);
+
+        // ✅ 3. Fetch profile in background (non-blocking)
+        if (sessionUser) {
+          fetchOrCreateProfile(sessionUser)
+            .then((p) => {
+              if (mounted) setProfile(p);
+            })
+            .catch((err) => {
+              console.error("Profile fetch error:", err);
+            });
         } else {
-          if (mounted) {
-            setUser(null);
-            setProfile(null);
-          }
+          setProfile(null);
         }
       } catch (err) {
         console.error("AuthProvider bootstrap error:", err);
-      } finally {
         if (mounted) setLoading(false);
       }
     };
 
     bootstrap();
 
-    // Only handles events that happen AFTER initial load:
-    // SIGNED_IN (login), SIGNED_OUT (logout), TOKEN_REFRESHED, USER_UPDATED.
-    // INITIAL_SESSION is intentionally skipped — bootstrap handles it.
+    // 🔥 AUTH STATE LISTENER (FIXED)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -77,24 +78,20 @@ export function AuthProvider({ children }) {
 
         const sessionUser = session?.user ?? null;
 
+        // ✅ Always set user immediately
+        setUser(sessionUser);
+        setLoading(false);
+
         if (sessionUser) {
-          try {
-            const p = await fetchOrCreateProfile(sessionUser);
-            if (mounted) {
-              setUser(sessionUser);
-              setProfile(p);
-            }
-          } catch (err) {
-            console.error("AuthProvider onAuthStateChange error:", err);
-          } finally {
-            if (mounted) setLoading(false);
-          }
+          fetchOrCreateProfile(sessionUser)
+            .then((p) => {
+              if (mounted) setProfile(p);
+            })
+            .catch((err) => {
+              console.error("Profile fetch error:", err);
+            });
         } else {
-          if (mounted) {
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-          }
+          setProfile(null);
         }
       }
     );
@@ -107,7 +104,12 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, role: profile?.role ?? null, loading }}
+      value={{
+        user,
+        profile,
+        role: profile?.role ?? null,
+        loading,
+      }}
     >
       {children}
     </AuthContext.Provider>
