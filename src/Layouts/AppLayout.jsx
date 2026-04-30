@@ -1,26 +1,61 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 
+// Pages where the back button should not appear
+// (top-level destinations — nowhere sensible to go back to)
+const NO_BACK = ["/", "/clerk", "/orders", "/messages", "/profile", "/about"];
+
 export default function AppLayout() {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const showBack  = !NO_BACK.includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div style={s.shell}>
       <Header />
 
-      <main className="flex-1 px-4 py-6 max-w-6xl mx-auto w-full">
+      <main style={s.main}>
         <Outlet />
       </main>
 
-      {/* Global Back Button */}
-      <div className="fixed bottom-4 left-4">
+      {showBack && (
         <button
+          style={s.backBtn}
           onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-gray-800 text-white rounded-lg shadow hover:bg-gray-700 transition"
+          aria-label="Go back"
         >
           ← Back
         </button>
-      </div>
+      )}
     </div>
   );
 }
+
+const s = {
+  shell: {
+    minHeight:     "100vh",
+    display:       "flex",
+    flexDirection: "column",
+    background:    "var(--smoke)",
+  },
+  main: {
+    flex: 1,
+  },
+  backBtn: {
+    position:      "fixed",
+    bottom:        24,
+    left:          20,
+    zIndex:        50,
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "4px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
+    fontSize:      13,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    padding:       "8px 16px",
+    cursor:        "pointer",
+    transition:    "color 0.15s, border-color 0.15s",
+  },
+};

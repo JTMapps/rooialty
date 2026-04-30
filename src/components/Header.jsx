@@ -166,8 +166,8 @@ export default function Header() {
                 <NavLink
                   label="Menu"
                   icon={<MenuIcon />}
-                  active={isActive("/")}
-                  onClick={() => navigate("/")}
+                  active={isActive("/menu")}
+                  onClick={() => navigate("/menu")}
                 />
               )}
               {role === "clerk" && (

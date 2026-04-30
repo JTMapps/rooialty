@@ -7,12 +7,12 @@ import { btn, card, layout, text, input } from "../styles/components";
 export default function Profile() {
   const { user, profile } = useAuth();
   const navigate           = useNavigate();
-  const [editing, setEditing]   = useState(false);
-  const [phone, setPhone]       = useState(profile?.phone ?? "");
+  const [editing,  setEditing]  = useState(false);
+  const [phone,    setPhone]    = useState(profile?.phone ?? "");
   const [username, setUsername] = useState(profile?.username ?? "");
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [error,    setError]    = useState("");
 
   const handleSave = async () => {
     setSaving(true);
@@ -31,7 +31,7 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate("/");
+    navigate("/login", { replace: true });
   };
 
   if (!user || !profile) {
@@ -46,7 +46,6 @@ export default function Profile() {
     <div style={layout.centered}>
       <div style={{ ...card.elevated, width: 420, textAlign: "left" }}>
 
-        {/* Title */}
         <div style={s.titleRow}>
           <h2 style={s.title}>Profile</h2>
           <span style={{
@@ -65,7 +64,6 @@ export default function Profile() {
 
         <div style={s.divider} />
 
-        {/* Fields */}
         <div style={s.fields}>
           <Field label="Email" value={profile.email} />
 
@@ -98,7 +96,6 @@ export default function Profile() {
         {error && <p style={text.error}>{error}</p>}
         {saved  && <p style={{ ...text.error, color: "var(--gold)" }}>Saved ✓</p>}
 
-        {/* Actions */}
         <div style={s.actions}>
           {editing ? (
             <>
@@ -156,11 +153,11 @@ function Field({ label, value }) {
 }
 
 const s = {
-  titleRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  title:    { fontFamily: "var(--font-display)", fontSize: 32, color: "var(--bone)", margin: 0 },
-  divider:  { width: "100%", height: 1, background: "var(--pit)", marginBottom: 20 },
-  fields:   { display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 },
-  field:    { marginBottom: 16 },
+  titleRow:   { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  title:      { fontFamily: "var(--font-display)", fontSize: 32, color: "var(--bone)", margin: 0 },
+  divider:    { width: "100%", height: 1, background: "var(--pit)", marginBottom: 20 },
+  fields:     { display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 },
+  field:      { marginBottom: 16 },
   fieldValue: { fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--bone)", marginTop: 4 },
-  actions:  { display: "flex", gap: 10 },
+  actions:    { display: "flex", gap: 10 },
 };

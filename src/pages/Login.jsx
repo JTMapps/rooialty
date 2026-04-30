@@ -1,15 +1,14 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { btn, card, input, layout, text } from "../styles/components";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(null);
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [focused,  setFocused]  = useState(null);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -22,12 +21,18 @@ export default function Login() {
 
     if (error) { setError(error.message); return; }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+    // Role-based destination — "/" will RoleRedirect for us,
+    // but we can fast-path here to avoid a flicker.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .maybeSingle();
 
     if (profile?.role === "clerk") {
       navigate("/clerk", { replace: true });
     } else {
-      navigate("/", { replace: true });
+      navigate("/menu", { replace: true });
     }
   };
 
@@ -39,7 +44,7 @@ export default function Login() {
   return (
     <div style={layout.centered}>
       <div style={card.auth}>
-        {/* Logo */}
+
         <div style={s.eyebrow}>Est. in the Streets</div>
         <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
         <div style={s.divider} />
@@ -81,10 +86,11 @@ export default function Login() {
 
         <p style={s.linkText}>
           Don't have an account?{" "}
-          <span onClick={() => navigate("/register")} style={text.link}>
+          <span onClick={() => navigate("/register", { replace: true })} style={text.link}>
             Register
           </span>
         </p>
+
       </div>
     </div>
   );
@@ -92,44 +98,44 @@ export default function Login() {
 
 const s = {
   eyebrow: {
-    fontFamily: "var(--font-body)",
-    fontSize: "11px",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",
     letterSpacing: "0.3em",
     textTransform: "uppercase",
-    color: "var(--fire)",
-    marginBottom: "6px",
+    color:         "var(--fire)",
+    marginBottom:  "6px",
   },
   title: {
-    fontFamily: "var(--font-display)",
-    fontSize: "56px",
-    lineHeight: 1,
+    fontFamily:    "var(--font-display)",
+    fontSize:      "56px",
+    lineHeight:    1,
     letterSpacing: "0.04em",
-    margin: "0 0 12px",
+    margin:        "0 0 12px",
   },
   divider: {
-    width: "40px",
-    height: "2px",
+    width:      "40px",
+    height:     "2px",
     background: "var(--fire)",
-    margin: "0 auto 16px",
+    margin:     "0 auto 16px",
   },
   subtitle: {
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "13px",
     letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: "24px",
+    color:         "var(--muted)",
+    marginBottom:  "24px",
   },
   form: {
-    display: "flex",
+    display:       "flex",
     flexDirection: "column",
-    gap: "10px",
+    gap:           "10px",
   },
   linkText: {
-    marginTop: "20px",
-    fontSize: "13px",
-    color: "var(--muted)",
-    fontFamily: "var(--font-body)",
+    marginTop:     "20px",
+    fontSize:      "13px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
     letterSpacing: "0.05em",
   },
 };

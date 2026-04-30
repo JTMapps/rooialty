@@ -2,7 +2,6 @@ import { useState } from "react";
 import useAuth from "../hooks/useAuth";
 import { useCartContext as useCart } from "../context/CartContext";
 import useMenu from "../hooks/useMenu";
-import Header from "../components/Header";
 import MenuSection from "../components/MenuSection";
 import WalkinPanel from "../components/WalkinPanel";
 
@@ -26,11 +25,8 @@ export default function Landing() {
   const { user, role, loading } = useAuth();
   const { grouped, loading: menuLoading } = useMenu();
   const { quantities, addItem, removeItem } = useCart();
-
   const [adding, setAdding] = useState(null);
 
-  // ProtectedRoute already blocks unauthenticated users.
-  // Wait here only if profile (and therefore role) is still resolving.
   if (loading || (user && role === null)) {
     return (
       <div style={styles.loader}>
@@ -41,19 +37,12 @@ export default function Landing() {
 
   // ── Clerk view ────────────────────────────────────────────────────────────
   if (role === "clerk") {
-    return (
-      <div>
-        <Header />
-        <WalkinPanel />
-      </div>
-    );
+    return <WalkinPanel />;
   }
 
   // ── Customer view ─────────────────────────────────────────────────────────
   return (
     <div>
-      <Header />
-
       {menuLoading ? (
         <p style={styles.menuLoading}>Loading menu…</p>
       ) : (

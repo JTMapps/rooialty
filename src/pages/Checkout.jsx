@@ -3,15 +3,14 @@ import useAuth from "../hooks/useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
 import { btn, text } from "../styles/components";
 
 export default function Checkout() {
-  const { user }               = useAuth();
+  const { user }                   = useAuth();
   const { cart, items, fetchCart } = useCart();
-  const navigate               = useNavigate();
-  const [loading, setLoading]  = useState(false);
-  const [error,   setError]    = useState("");
+  const navigate                   = useNavigate();
+  const [loading, setLoading]      = useState(false);
+  const [error,   setError]        = useState("");
 
   const total = items.reduce(
     (sum, i) => sum + i.quantity * i.item.price,
@@ -51,7 +50,7 @@ export default function Checkout() {
       );
 
       await fetchCart();
-      navigate("/orders");
+      navigate("/orders", { replace: true });
     } catch (err) {
       console.error(err);
       setError("Something went wrong. Please try again.");
@@ -62,18 +61,14 @@ export default function Checkout() {
 
   return (
     <div style={s.page}>
-      <Header />
-
       <div style={s.inner}>
 
-        {/* Page title */}
         <div style={s.titleRow}>
           <div style={s.eyebrow}>Your Order</div>
           <h1 style={s.title}>Checkout</h1>
           <div style={s.divider} />
         </div>
 
-        {/* Empty state */}
         {items.length === 0 ? (
           <div style={s.empty}>
             <span style={{ fontSize: 40 }}>🛒</span>
@@ -81,7 +76,6 @@ export default function Checkout() {
           </div>
         ) : (
           <>
-            {/* Line items */}
             <div style={s.itemsList}>
               {items.map((i) => (
                 <div key={i.id} style={s.lineItem}>
@@ -96,10 +90,8 @@ export default function Checkout() {
               ))}
             </div>
 
-            {/* Divider */}
             <div style={s.rule} />
 
-            {/* Total */}
             <div style={s.totalRow}>
               <span style={s.totalLabel}>Total</span>
               <span style={{ ...text.price, fontSize: 28 }}>
@@ -107,17 +99,15 @@ export default function Checkout() {
               </span>
             </div>
 
-            {/* Error */}
             {error && <p style={{ ...text.error, marginBottom: 12 }}>{error}</p>}
 
-            {/* CTA */}
             <button
               className="btn-primary"
               style={{
                 ...btn.primary,
                 ...btn.full,
                 marginTop: 8,
-                opacity: loading ? 0.7 : 1,
+                opacity:   loading ? 0.7 : 1,
               }}
               onClick={handleCheckout}
               disabled={loading}
@@ -184,7 +174,6 @@ const s = {
   itemsList: {
     display:       "flex",
     flexDirection: "column",
-    gap:           0,
   },
   lineItem: {
     display:        "flex",
