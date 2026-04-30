@@ -16,11 +16,11 @@ const CATEGORY_ORDER = [
 ];
 
 const ICONS = {
-  "URBAN KOTAS":   "🌯",
-  "ROOIALTY MEALS":"👑",
-  "TO SHARE":      "🤝",
-  "WING BAR":      "🍗",
-  "COLD SERVES":   "🧊",
+  "URBAN KOTAS":    "🌯",
+  "ROOIALTY MEALS": "👑",
+  "TO SHARE":       "🤝",
+  "WING BAR":       "🍗",
+  "COLD SERVES":    "🧊",
 };
 
 export default function Landing() {
@@ -31,10 +31,18 @@ export default function Landing() {
   const navigate = useNavigate();
   const [adding, setAdding] = useState(null);
 
-  if (loading) return <div>Loading...</div>;
-  if (!user)   return <div>Please login</div>;
+  // ProtectedRoute already blocks unauthenticated users.
+  // We only need to wait here if the profile (and therefore role) is
+  // still resolving after the user object is confirmed.
+  if (loading || (user && role === null)) {
+    return (
+      <div style={styles.loader}>
+        <span className="spinner" />
+      </div>
+    );
+  }
 
-  // ── Clerk view: walk-in order panel ──────────────────────────────────────
+  // ── Clerk view ────────────────────────────────────────────────────────────
   if (role === "clerk") {
     return (
       <div>
@@ -78,3 +86,12 @@ export default function Landing() {
     </div>
   );
 }
+
+const styles = {
+  loader: {
+    height:         "100vh",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+};
