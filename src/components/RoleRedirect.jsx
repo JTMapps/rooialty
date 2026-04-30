@@ -1,7 +1,6 @@
 import { Navigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
-// Renders at "/" — sends each role to their correct home.
 export default function RoleRedirect() {
   const { role, loading, user } = useAuth();
 
@@ -13,9 +12,8 @@ export default function RoleRedirect() {
     );
   }
 
-  if (role === "clerk") return <Navigate to="/clerk" replace />;
+  if (role === "clerk") return <Navigate to="/counter" replace />;
 
-  // "user" role or any unrecognised role → menu (Landing)
   return <Navigate to="/menu" replace />;
 }
 

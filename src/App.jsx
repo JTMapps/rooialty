@@ -14,23 +14,22 @@ import Messages       from "./pages/Messages";
 import Orders         from "./pages/Orders";
 import Checkout       from "./pages/Checkout";
 import ClerkDashboard from "./pages/ClerkDashboard";
+import Counter        from "./pages/Counter";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* ── Public routes (no shell, no header) ── */}
+        {/* ── Public routes ── */}
         <Route path="/login"    element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ── Authenticated shell — Header lives here once ── */}
+        {/* ── Authenticated shell ── */}
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
 
-          {/* "/" reads role and redirects — clerks → /clerk, users → /menu */}
           <Route index element={<RoleRedirect />} />
 
-          {/* Public-ish: visible to any logged-in user */}
           <Route path="/about"    element={<About />} />
           <Route path="/profile"  element={<Profile />} />
           <Route path="/messages" element={<Messages />} />
@@ -50,10 +49,12 @@ export default function App() {
           <Route path="/clerk"
             element={<RoleGuard allow={["clerk"]}><ClerkDashboard /></RoleGuard>}
           />
+          <Route path="/counter"
+            element={<RoleGuard allow={["clerk"]}><Counter /></RoleGuard>}
+          />
 
         </Route>
 
-        {/* Fallback — anything unknown goes to "/" which then role-redirects */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>

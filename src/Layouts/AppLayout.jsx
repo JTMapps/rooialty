@@ -1,14 +1,31 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
+import { useEffect, useState } from "react";
 
-// Pages where the back button should not appear
-// (top-level destinations — nowhere sensible to go back to)
-const NO_BACK = ["/", "/clerk", "/orders", "/messages", "/profile", "/about"];
+// Top-level destinations — no sensible "back" from these
+const NO_BACK = [
+  "/",
+  "/menu",
+  "/counter",
+  "/clerk",
+  "/orders",
+  "/messages",
+  "/profile",
+  "/about",
+];
 
 export default function AppLayout() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const showBack  = !NO_BACK.includes(location.pathname);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const showBack = !NO_BACK.includes(location.pathname);
+
+  // Hover state — inline styles can't do :hover so we track it in state
+  const [hovered, setHovered] = useState(false);
+
+  // Reset hover when back button disappears
+  useEffect(() => {
+    if (!showBack) setHovered(false);
+  }, [showBack]);
 
   return (
     <div style={s.shell}>
@@ -20,8 +37,13 @@ export default function AppLayout() {
 
       {showBack && (
         <button
-          style={s.backBtn}
+          style={{
+            ...s.backBtn,
+            ...(hovered ? s.backBtnHover : {}),
+          }}
           onClick={() => navigate(-1)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
           aria-label="Go back"
         >
           ← Back
@@ -56,6 +78,11 @@ const s = {
     textTransform: "uppercase",
     padding:       "8px 16px",
     cursor:        "pointer",
-    transition:    "color 0.15s, border-color 0.15s",
+    transition:    "color 0.15s, border-color 0.15s, background 0.15s",
+  },
+  backBtnHover: {
+    color:       "var(--bone)",
+    borderColor: "var(--fire)",
+    background:  "var(--char)",
   },
 };

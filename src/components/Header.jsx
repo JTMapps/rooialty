@@ -15,6 +15,10 @@
 //   the cart icon is replaced by an order-tracking icon with a status emoji.
 //   Clicking it navigates to /orders. Once the order reaches completed or
 //   cancelled the cart icon returns.
+//
+// Clerk nav:
+//   Counter (/counter) — walk-in order panel
+//   Kitchen (/clerk)   — incoming order management
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -36,7 +40,7 @@ export default function Header() {
 
   const { items, cartCount, cartTotal, addItem, removeItem } = useCart();
 
-  // ── Unread message badge ─────────────────────────────────────────────────
+  // ── Unread message badge ──────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
 
@@ -44,13 +48,11 @@ export default function Header() {
 
     const channel = supabase
       .channel("header-unread-badge")
-      .on(
-        "postgres_changes",
+      .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         fetchUnread
       )
-      .on(
-        "postgres_changes",
+      .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages" },
         fetchUnread
       )
@@ -67,8 +69,6 @@ export default function Header() {
       .select("id", { count: "exact", head: true })
       .eq("is_read", false);
 
-    // Clerks track messages sent to the store (recipient_id IS NULL).
-    // Users track replies sent directly to them.
     if (role === "clerk") q = q.is("recipient_id", null);
     else                  q = q.eq("recipient_id", user.id);
 
@@ -76,9 +76,7 @@ export default function Header() {
     setUnread(count || 0);
   };
 
-  // ── Active order watch ───────────────────────────────────────────────────
-  // Customers only. Swaps the cart icon for an order-progress icon while
-  // an order is pending / confirmed / ready.
+  // ── Active order watch (customers only) ───────────────────────────────────
   useEffect(() => {
     if (!user || role !== "user") return;
 
@@ -86,16 +84,12 @@ export default function Header() {
 
     const channel = supabase
       .channel("header-active-order")
-      .on(
-        "postgres_changes",
-        {
-          event:  "*",
-          schema: "public",
-          table:  "orders",
-          filter: `user_id=eq.${user.id}`,
-        },
-        fetchActiveOrder
-      )
+      .on("postgres_changes", {
+        event:  "*",
+        schema: "public",
+        table:  "orders",
+        filter: `user_id=eq.${user.id}`,
+      }, fetchActiveOrder)
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -112,7 +106,7 @@ export default function Header() {
     setActiveOrder(data ?? null);
   };
 
-  // ── Close cart panel on outside click ────────────────────────────────────
+  // ── Close cart on outside click ───────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (cartPanelRef.current && !cartPanelRef.current.contains(e.target)) {
@@ -123,23 +117,20 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, [cartOpen]);
 
-  // Close cart panel when the route changes (user navigated away).
+  // Close cart on route change
   useEffect(() => {
     setCartOpen(false);
   }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
 
-  // Status emoji shown on the order-tracking icon badge.
   const orderEmoji =
     activeOrder?.status === "pending"   ? "⏳" :
     activeOrder?.status === "confirmed" ? "🔥" : "✅";
 
   return (
     <>
-      {/* ──────────────────────────────────────────────────────────────────── */}
-      {/* Header bar                                                          */}
-      {/* ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Header bar ──────────────────────────────────────────────────────── */}
       <header style={s.wrapper}>
 
         {/* Brand */}
@@ -156,26 +147,20 @@ export default function Header() {
           <div style={s.tag}>068 142 5499 · @rooialtycafe</div>
         </div>
 
-        {/* Nav — only shown when a user is logged in */}
+        {/* Nav — only when logged in */}
         {user && (
           <nav style={s.nav}>
 
             {/* ── Left: page links ── */}
             <div style={s.navLinks}>
+
+              {/* Customer links */}
               {role === "user" && (
                 <NavLink
                   label="Menu"
                   icon={<MenuIcon />}
                   active={isActive("/menu")}
                   onClick={() => navigate("/menu")}
-                />
-              )}
-              {role === "clerk" && (
-                <NavLink
-                  label="Dashboard"
-                  icon={<DashIcon />}
-                  active={isActive("/clerk")}
-                  onClick={() => navigate("/clerk")}
                 />
               )}
               {role === "user" && (
@@ -186,6 +171,26 @@ export default function Header() {
                   onClick={() => navigate("/orders")}
                 />
               )}
+
+              {/* Clerk links */}
+              {role === "clerk" && (
+                <NavLink
+                  label="Counter"
+                  icon={<CounterIcon />}
+                  active={isActive("/counter")}
+                  onClick={() => navigate("/counter")}
+                />
+              )}
+              {role === "clerk" && (
+                <NavLink
+                  label="Kitchen"
+                  icon={<DashIcon />}
+                  active={isActive("/clerk")}
+                  onClick={() => navigate("/clerk")}
+                />
+              )}
+
+              {/* Shared */}
               <NavLink
                 label="About"
                 icon={<InfoIcon />}
@@ -197,7 +202,7 @@ export default function Header() {
             {/* ── Right: action icons ── */}
             <div style={s.navActions}>
 
-              {/* Cart icon / Order-in-progress icon (customers only) */}
+              {/* Cart / active-order icon (customers only) */}
               {role === "user" && (
                 activeOrder ? (
                   <button
@@ -265,14 +270,11 @@ export default function Header() {
         )}
       </header>
 
-      {/* ──────────────────────────────────────────────────────────────────── */}
-      {/* Cart panel — slide-in drawer                                        */}
-      {/* ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Cart panel ──────────────────────────────────────────────────────── */}
       {cartOpen && role === "user" && (
         <div style={s.cartOverlay}>
           <div ref={cartPanelRef} style={s.cartPanel}>
 
-            {/* Panel header */}
             <div style={s.cartPanelHead}>
               <span style={s.cartPanelTitle}>Your Cart</span>
               <button
@@ -284,7 +286,6 @@ export default function Header() {
               </button>
             </div>
 
-            {/* Empty state */}
             {items.length === 0 ? (
               <div style={s.cartEmpty}>
                 <span style={{ fontSize: 32 }}>🛒</span>
@@ -295,7 +296,6 @@ export default function Header() {
               </div>
             ) : (
               <>
-                {/* Line items */}
                 <div style={s.cartItems}>
                   {items.map((ci) => (
                     <div key={ci.item_id} style={s.cartRow}>
@@ -324,22 +324,19 @@ export default function Header() {
                         </button>
                       </div>
 
-                      <span
-                        style={{
-                          ...text.price,
-                          fontSize: 15,
-                          minWidth: 64,
-                          textAlign: "right",
-                          flexShrink: 0,
-                        }}
-                      >
+                      <span style={{
+                        ...text.price,
+                        fontSize:   15,
+                        minWidth:   64,
+                        textAlign:  "right",
+                        flexShrink: 0,
+                      }}>
                         R{((ci.item?.price ?? 0) * ci.quantity).toFixed(2)}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                {/* Footer: total + CTA */}
                 <div style={s.cartFooter}>
                   <div style={s.cartTotal}>
                     <span style={s.cartTotalLabel}>Total</span>
@@ -367,7 +364,7 @@ export default function Header() {
   );
 }
 
-// ── NavLink sub-component ────────────────────────────────────────────────────
+// ── NavLink sub-component ─────────────────────────────────────────────────────
 function NavLink({ label, icon, active, onClick }) {
   return (
     <button
@@ -384,17 +381,70 @@ function NavLink({ label, icon, active, onClick }) {
   );
 }
 
-// ── SVG Icons ────────────────────────────────────────────────────────────────
-const MenuIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
-const OrderIcon      = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>;
-const ChatIcon       = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>;
-const ProfileIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-const DashIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
-const InfoIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8"  x2="12" y2="8"  strokeLinecap="round" strokeWidth="3"/><line x1="12" y1="12" x2="12" y2="16"/></svg>;
-const CartIconSVG    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
-const OrderTrackIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+const MenuIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3"  y1="6"  x2="21" y2="6"  />
+    <line x1="3"  y1="12" x2="21" y2="12" />
+    <line x1="3"  y1="18" x2="21" y2="18" />
+  </svg>
+);
+const OrderIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+    <rect x="9" y="3" width="6" height="4" rx="1"/>
+    <line x1="9" y1="12" x2="15" y2="12"/>
+    <line x1="9" y1="16" x2="13" y2="16"/>
+  </svg>
+);
+const CounterIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <path d="M16 10a4 4 0 01-8 0"/>
+  </svg>
+);
+const DashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3"  y="3"  width="7" height="7"/>
+    <rect x="14" y="3"  width="7" height="7"/>
+    <rect x="3"  y="14" width="7" height="7"/>
+    <rect x="14" y="14" width="7" height="7"/>
+  </svg>
+);
+const InfoIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8"  x2="12" y2="8"  strokeLinecap="round" strokeWidth="3"/>
+    <line x1="12" y1="12" x2="12" y2="16"/>
+  </svg>
+);
+const ChatIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+  </svg>
+);
+const ProfileIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const CartIconSVG = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="9"  cy="21" r="1"/>
+    <circle cx="20" cy="21" r="1"/>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+  </svg>
+);
+const OrderTrackIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = {
   wrapper: {
     position:    "sticky",
@@ -403,55 +453,59 @@ const s = {
     background:  "var(--smoke)",
     borderBottom:"1px solid var(--pit)",
   },
+
+  // ↓ Tightened padding: was "16px 24px 12px", now "10px 24px 8px"
   brand: {
-    padding:   "16px 24px 12px",
+    padding:   "10px 24px 8px",
     textAlign: "center",
   },
   eyebrow: {
     fontFamily:    "var(--font-body)",
-    fontSize:      "11px",
+    fontSize:      "10px",          // was 11px
     fontWeight:    600,
     letterSpacing: "0.35em",
     textTransform: "uppercase",
     color:         "var(--fire)",
-    marginBottom:  "4px",
+    marginBottom:  "2px",           // was 4px
   },
+  // ↓ Logo ~25% smaller: clamp was (40px, 8vw, 80px) → (30px, 6vw, 60px)
   title: {
     fontFamily:    "var(--font-display)",
-    fontSize:      "clamp(40px, 8vw, 80px)",
+    fontSize:      "clamp(30px, 6vw, 60px)",
     lineHeight:    0.9,
     letterSpacing: "0.02em",
-    margin:        "0 0 6px",
+    margin:        "0 0 4px",       // was 0 0 6px
     cursor:        "pointer",
   },
   sub: {
     fontFamily:    "var(--font-body)",
-    fontSize:      "12px",
+    fontSize:      "10px",          // was 12px
     letterSpacing: "0.25em",
     color:         "var(--muted)",
     textTransform: "uppercase",
   },
+  // ↓ Tag marginTop tightened: was 8px → 5px
   tag: {
     display:       "inline-block",
-    marginTop:     "8px",
-    padding:       "3px 10px",
+    marginTop:     "5px",
+    padding:       "2px 8px",       // was 3px 10px
     border:        "1px solid var(--pit)",
     borderRadius:  "2px",
     fontFamily:    "var(--font-body)",
-    fontSize:      "10px",
+    fontSize:      "9px",           // was 10px
     letterSpacing: "0.2em",
     color:         "var(--muted)",
     textTransform: "uppercase",
   },
 
-  // Nav bar
+  // ↓ Nav height: was 42 → 36
   nav: {
     display:        "flex",
     justifyContent: "space-between",
     alignItems:     "center",
     padding:        "0 20px",
     borderTop:      "1px solid var(--pit)",
-    height:         42,
+    height:         36,             // was 42
   },
   navLinks: {
     display:    "flex",
@@ -460,21 +514,21 @@ const s = {
     height:     "100%",
   },
   navLink: {
-    display:        "inline-flex",
-    alignItems:     "center",
-    gap:            6,
-    padding:        "0 12px",
-    background:     "transparent",
-    border:         "none",
-    borderBottom:   "2px solid transparent",
-    cursor:         "pointer",
-    fontFamily:     "var(--font-body)",
-    fontSize:       "12px",
-    letterSpacing:  "0.15em",
-    textTransform:  "uppercase",
-    transition:     "color 0.15s, border-color 0.15s",
-    height:         "100%",
-    marginBottom:   "-1px",
+    display:       "inline-flex",
+    alignItems:    "center",
+    gap:           5,               // was 6
+    padding:       "0 10px",        // was 0 12px
+    background:    "transparent",
+    border:        "none",
+    borderBottom:  "2px solid transparent",
+    cursor:        "pointer",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",          // was 12px
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    transition:    "color 0.15s, border-color 0.15s",
+    height:        "100%",
+    marginBottom:  "-1px",
   },
   navLinkIcon: {
     display:    "flex",
@@ -483,15 +537,16 @@ const s = {
   navActions: {
     display:    "flex",
     alignItems: "center",
-    gap:        4,
+    gap:        2,                  // was 4
   },
+  // ↓ Icon buttons: was 36×36 → 32×32
   iconBtn: {
     position:       "relative",
     display:        "inline-flex",
     alignItems:     "center",
     justifyContent: "center",
-    width:          36,
-    height:         36,
+    width:          32,
+    height:         32,
     background:     "transparent",
     border:         "1px solid transparent",
     borderRadius:   "4px",
@@ -520,7 +575,7 @@ const s = {
     textAlign:    "center",
   },
 
-  // Cart panel
+  // Cart panel — unchanged
   cartOverlay: {
     position:   "fixed",
     inset:      0,
@@ -554,13 +609,13 @@ const s = {
     color:         "var(--bone)",
   },
   cartClose: {
-    background:  "transparent",
-    border:      "none",
-    color:       "var(--muted)",
-    fontSize:    18,
-    cursor:      "pointer",
-    padding:     "4px 8px",
-    lineHeight:  1,
+    background: "transparent",
+    border:     "none",
+    color:      "var(--muted)",
+    fontSize:   18,
+    cursor:     "pointer",
+    padding:    "4px 8px",
+    lineHeight: 1,
   },
   cartEmpty: {
     flex:           1,

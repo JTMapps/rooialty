@@ -21,16 +21,15 @@ export default function Login() {
 
     if (error) { setError(error.message); return; }
 
-    // Role-based destination — "/" will RoleRedirect for us,
-    // but we can fast-path here to avoid a flicker.
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)
       .maybeSingle();
 
+    // Clerks home is /counter (walk-in panel), users home is /menu
     if (profile?.role === "clerk") {
-      navigate("/clerk", { replace: true });
+      navigate("/counter", { replace: true });
     } else {
       navigate("/menu", { replace: true });
     }
@@ -86,7 +85,10 @@ export default function Login() {
 
         <p style={s.linkText}>
           Don't have an account?{" "}
-          <span onClick={() => navigate("/register", { replace: true })} style={text.link}>
+          <span
+            onClick={() => navigate("/register", { replace: true })}
+            style={text.link}
+          >
             Register
           </span>
         </p>
