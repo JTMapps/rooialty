@@ -1,3 +1,6 @@
+// src/pages/Kitchen.jsx  (was ClerkDashboard.jsx)
+// Clerk order-tracking panel — shown at /clerk
+
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { badge, btn, text } from "../styles/components";
@@ -18,7 +21,7 @@ const STATUS_LABEL = {
 
 const DELIVERY_ICON = { collect: "🏪", call: "🚗" };
 
-export default function ClerkDashboard() {
+export default function Kitchen() {
   const [orders,   setOrders]   = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [etaInput, setEtaInput] = useState({});
@@ -106,7 +109,6 @@ export default function ClerkDashboard() {
       .eq("id", order.order_id);
 
     if (!error) {
-      // Patch local state immediately — no refresh needed
       setOrders((prev) =>
         prev.map((o) =>
           o.order_id === order.order_id ? { ...o, ...update } : o

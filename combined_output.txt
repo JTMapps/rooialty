@@ -2928,36 +2928,65 @@ export default defineConfig({
 
 ===== FILE: C:\Users\tshep\Rooialty\src\App.jsx =====
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Landing       from "./pages/Landing";
-import Login         from "./pages/Login";
-import Register      from "./pages/Register";
-import ClerkDashboard from "./pages/ClerkDashboard";
-import Checkout      from "./pages/Checkout";
-import Orders        from "./pages/Orders";
-import Messages      from "./pages/Messages";
-import Menu          from "./pages/Menu";
-import Profile       from "./pages/Profile";
-import About         from "./pages/About";
-import RoleGuard     from "./components/RoleGuard";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import AppLayout      from "./layouts/AppLayout";
+import RoleRedirect   from "./components/RoleRedirect";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleGuard      from "./components/RoleGuard";
+
+import Landing        from "./pages/Landing";
+import Login          from "./pages/Login";
+import Register       from "./pages/Register";
+import About          from "./pages/About";
+import Profile        from "./pages/Profile";
+import Messages       from "./pages/Messages";
+import Orders         from "./pages/Orders";
+import Checkout       from "./pages/Checkout";
+import ClerkDashboard from "./pages/ClerkDashboard";
+import Counter        from "./pages/Counter";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"         element={<Landing />} />
+
+        {/* ── Public routes ── */}
         <Route path="/login"    element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/about"    element={<About />} />
 
-        <Route path="/profile"  element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        {/* ── Authenticated shell ── */}
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
 
-        <Route path="/clerk"    element={<RoleGuard allow={["clerk"]}><ClerkDashboard /></RoleGuard>} />
+          <Route index element={<RoleRedirect />} />
 
-        <Route path="/checkout" element={<RoleGuard allow={["user"]}><Checkout /></RoleGuard>} />
-        <Route path="/orders"   element={<RoleGuard allow={["user"]}><Orders /></RoleGuard>} />
+          <Route path="/about"    element={<About />} />
+          <Route path="/profile"  element={<Profile />} />
+          <Route path="/messages" element={<Messages />} />
+
+          {/* Customer only */}
+          <Route path="/menu"
+            element={<RoleGuard allow={["user"]}><Landing /></RoleGuard>}
+          />
+          <Route path="/checkout"
+            element={<RoleGuard allow={["user"]}><Checkout /></RoleGuard>}
+          />
+          <Route path="/orders"
+            element={<RoleGuard allow={["user"]}><Orders /></RoleGuard>}
+          />
+
+          {/* Clerk only */}
+          <Route path="/clerk"
+            element={<RoleGuard allow={["clerk"]}><ClerkDashboard /></RoleGuard>}
+          />
+          <Route path="/counter"
+            element={<RoleGuard allow={["clerk"]}><Counter /></RoleGuard>}
+          />
+
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
     </BrowserRouter>
   );
@@ -3157,6 +3186,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 //   the cart icon is replaced by an order-tracking icon with a status emoji.
 //   Clicking it navigates to /orders. Once the order reaches completed or
 //   cancelled the cart icon returns.
+//
+// Clerk nav:
+//   Counter (/counter) — walk-in order panel
+//   Kitchen (/clerk)   — incoming order management
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
@@ -3178,7 +3211,7 @@ export default function Header() {
 
   const { items, cartCount, cartTotal, addItem, removeItem } = useCart();
 
-  // ── Unread message badge ─────────────────────────────────────────────────
+  // ── Unread message badge ──────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
 
@@ -3186,13 +3219,11 @@ export default function Header() {
 
     const channel = supabase
       .channel("header-unread-badge")
-      .on(
-        "postgres_changes",
+      .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         fetchUnread
       )
-      .on(
-        "postgres_changes",
+      .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "messages" },
         fetchUnread
       )
@@ -3209,8 +3240,6 @@ export default function Header() {
       .select("id", { count: "exact", head: true })
       .eq("is_read", false);
 
-    // Clerks track messages sent to the store (recipient_id IS NULL).
-    // Users track replies sent directly to them.
     if (role === "clerk") q = q.is("recipient_id", null);
     else                  q = q.eq("recipient_id", user.id);
 
@@ -3218,9 +3247,7 @@ export default function Header() {
     setUnread(count || 0);
   };
 
-  // ── Active order watch ───────────────────────────────────────────────────
-  // Customers only. Swaps the cart icon for an order-progress icon while
-  // an order is pending / confirmed / ready.
+  // ── Active order watch (customers only) ───────────────────────────────────
   useEffect(() => {
     if (!user || role !== "user") return;
 
@@ -3228,16 +3255,12 @@ export default function Header() {
 
     const channel = supabase
       .channel("header-active-order")
-      .on(
-        "postgres_changes",
-        {
-          event:  "*",
-          schema: "public",
-          table:  "orders",
-          filter: `user_id=eq.${user.id}`,
-        },
-        fetchActiveOrder
-      )
+      .on("postgres_changes", {
+        event:  "*",
+        schema: "public",
+        table:  "orders",
+        filter: `user_id=eq.${user.id}`,
+      }, fetchActiveOrder)
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -3254,7 +3277,7 @@ export default function Header() {
     setActiveOrder(data ?? null);
   };
 
-  // ── Close cart panel on outside click ────────────────────────────────────
+  // ── Close cart on outside click ───────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (cartPanelRef.current && !cartPanelRef.current.contains(e.target)) {
@@ -3265,23 +3288,20 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, [cartOpen]);
 
-  // Close cart panel when the route changes (user navigated away).
+  // Close cart on route change
   useEffect(() => {
     setCartOpen(false);
   }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
 
-  // Status emoji shown on the order-tracking icon badge.
   const orderEmoji =
     activeOrder?.status === "pending"   ? "⏳" :
     activeOrder?.status === "confirmed" ? "🔥" : "✅";
 
   return (
     <>
-      {/* ──────────────────────────────────────────────────────────────────── */}
-      {/* Header bar                                                          */}
-      {/* ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Header bar ──────────────────────────────────────────────────────── */}
       <header style={s.wrapper}>
 
         {/* Brand */}
@@ -3298,26 +3318,20 @@ export default function Header() {
           <div style={s.tag}>068 142 5499 · @rooialtycafe</div>
         </div>
 
-        {/* Nav — only shown when a user is logged in */}
+        {/* Nav — only when logged in */}
         {user && (
           <nav style={s.nav}>
 
             {/* ── Left: page links ── */}
             <div style={s.navLinks}>
+
+              {/* Customer links */}
               {role === "user" && (
                 <NavLink
                   label="Menu"
                   icon={<MenuIcon />}
-                  active={isActive("/")}
-                  onClick={() => navigate("/")}
-                />
-              )}
-              {role === "clerk" && (
-                <NavLink
-                  label="Dashboard"
-                  icon={<DashIcon />}
-                  active={isActive("/clerk")}
-                  onClick={() => navigate("/clerk")}
+                  active={isActive("/menu")}
+                  onClick={() => navigate("/menu")}
                 />
               )}
               {role === "user" && (
@@ -3328,6 +3342,26 @@ export default function Header() {
                   onClick={() => navigate("/orders")}
                 />
               )}
+
+              {/* Clerk links */}
+              {role === "clerk" && (
+                <NavLink
+                  label="Counter"
+                  icon={<CounterIcon />}
+                  active={isActive("/counter")}
+                  onClick={() => navigate("/counter")}
+                />
+              )}
+              {role === "clerk" && (
+                <NavLink
+                  label="Kitchen"
+                  icon={<DashIcon />}
+                  active={isActive("/clerk")}
+                  onClick={() => navigate("/clerk")}
+                />
+              )}
+
+              {/* Shared */}
               <NavLink
                 label="About"
                 icon={<InfoIcon />}
@@ -3339,7 +3373,7 @@ export default function Header() {
             {/* ── Right: action icons ── */}
             <div style={s.navActions}>
 
-              {/* Cart icon / Order-in-progress icon (customers only) */}
+              {/* Cart / active-order icon (customers only) */}
               {role === "user" && (
                 activeOrder ? (
                   <button
@@ -3407,14 +3441,11 @@ export default function Header() {
         )}
       </header>
 
-      {/* ──────────────────────────────────────────────────────────────────── */}
-      {/* Cart panel — slide-in drawer                                        */}
-      {/* ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Cart panel ──────────────────────────────────────────────────────── */}
       {cartOpen && role === "user" && (
         <div style={s.cartOverlay}>
           <div ref={cartPanelRef} style={s.cartPanel}>
 
-            {/* Panel header */}
             <div style={s.cartPanelHead}>
               <span style={s.cartPanelTitle}>Your Cart</span>
               <button
@@ -3426,7 +3457,6 @@ export default function Header() {
               </button>
             </div>
 
-            {/* Empty state */}
             {items.length === 0 ? (
               <div style={s.cartEmpty}>
                 <span style={{ fontSize: 32 }}>🛒</span>
@@ -3437,7 +3467,6 @@ export default function Header() {
               </div>
             ) : (
               <>
-                {/* Line items */}
                 <div style={s.cartItems}>
                   {items.map((ci) => (
                     <div key={ci.item_id} style={s.cartRow}>
@@ -3466,22 +3495,19 @@ export default function Header() {
                         </button>
                       </div>
 
-                      <span
-                        style={{
-                          ...text.price,
-                          fontSize: 15,
-                          minWidth: 64,
-                          textAlign: "right",
-                          flexShrink: 0,
-                        }}
-                      >
+                      <span style={{
+                        ...text.price,
+                        fontSize:   15,
+                        minWidth:   64,
+                        textAlign:  "right",
+                        flexShrink: 0,
+                      }}>
                         R{((ci.item?.price ?? 0) * ci.quantity).toFixed(2)}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                {/* Footer: total + CTA */}
                 <div style={s.cartFooter}>
                   <div style={s.cartTotal}>
                     <span style={s.cartTotalLabel}>Total</span>
@@ -3509,7 +3535,7 @@ export default function Header() {
   );
 }
 
-// ── NavLink sub-component ────────────────────────────────────────────────────
+// ── NavLink sub-component ─────────────────────────────────────────────────────
 function NavLink({ label, icon, active, onClick }) {
   return (
     <button
@@ -3526,17 +3552,70 @@ function NavLink({ label, icon, active, onClick }) {
   );
 }
 
-// ── SVG Icons ────────────────────────────────────────────────────────────────
-const MenuIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
-const OrderIcon      = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>;
-const ChatIcon       = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>;
-const ProfileIcon    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-const DashIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
-const InfoIcon       = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8"  x2="12" y2="8"  strokeLinecap="round" strokeWidth="3"/><line x1="12" y1="12" x2="12" y2="16"/></svg>;
-const CartIconSVG    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
-const OrderTrackIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+const MenuIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3"  y1="6"  x2="21" y2="6"  />
+    <line x1="3"  y1="12" x2="21" y2="12" />
+    <line x1="3"  y1="18" x2="21" y2="18" />
+  </svg>
+);
+const OrderIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+    <rect x="9" y="3" width="6" height="4" rx="1"/>
+    <line x1="9" y1="12" x2="15" y2="12"/>
+    <line x1="9" y1="16" x2="13" y2="16"/>
+  </svg>
+);
+const CounterIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <path d="M16 10a4 4 0 01-8 0"/>
+  </svg>
+);
+const DashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3"  y="3"  width="7" height="7"/>
+    <rect x="14" y="3"  width="7" height="7"/>
+    <rect x="3"  y="14" width="7" height="7"/>
+    <rect x="14" y="14" width="7" height="7"/>
+  </svg>
+);
+const InfoIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8"  x2="12" y2="8"  strokeLinecap="round" strokeWidth="3"/>
+    <line x1="12" y1="12" x2="12" y2="16"/>
+  </svg>
+);
+const ChatIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+  </svg>
+);
+const ProfileIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const CartIconSVG = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="9"  cy="21" r="1"/>
+    <circle cx="20" cy="21" r="1"/>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+  </svg>
+);
+const OrderTrackIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = {
   wrapper: {
     position:    "sticky",
@@ -3545,55 +3624,59 @@ const s = {
     background:  "var(--smoke)",
     borderBottom:"1px solid var(--pit)",
   },
+
+  // ↓ Tightened padding: was "16px 24px 12px", now "10px 24px 8px"
   brand: {
-    padding:   "16px 24px 12px",
+    padding:   "10px 24px 8px",
     textAlign: "center",
   },
   eyebrow: {
     fontFamily:    "var(--font-body)",
-    fontSize:      "11px",
+    fontSize:      "10px",          // was 11px
     fontWeight:    600,
     letterSpacing: "0.35em",
     textTransform: "uppercase",
     color:         "var(--fire)",
-    marginBottom:  "4px",
+    marginBottom:  "2px",           // was 4px
   },
+  // ↓ Logo ~25% smaller: clamp was (40px, 8vw, 80px) → (30px, 6vw, 60px)
   title: {
     fontFamily:    "var(--font-display)",
-    fontSize:      "clamp(40px, 8vw, 80px)",
+    fontSize:      "clamp(30px, 6vw, 60px)",
     lineHeight:    0.9,
     letterSpacing: "0.02em",
-    margin:        "0 0 6px",
+    margin:        "0 0 4px",       // was 0 0 6px
     cursor:        "pointer",
   },
   sub: {
     fontFamily:    "var(--font-body)",
-    fontSize:      "12px",
+    fontSize:      "10px",          // was 12px
     letterSpacing: "0.25em",
     color:         "var(--muted)",
     textTransform: "uppercase",
   },
+  // ↓ Tag marginTop tightened: was 8px → 5px
   tag: {
     display:       "inline-block",
-    marginTop:     "8px",
-    padding:       "3px 10px",
+    marginTop:     "5px",
+    padding:       "2px 8px",       // was 3px 10px
     border:        "1px solid var(--pit)",
     borderRadius:  "2px",
     fontFamily:    "var(--font-body)",
-    fontSize:      "10px",
+    fontSize:      "9px",           // was 10px
     letterSpacing: "0.2em",
     color:         "var(--muted)",
     textTransform: "uppercase",
   },
 
-  // Nav bar
+  // ↓ Nav height: was 42 → 36
   nav: {
     display:        "flex",
     justifyContent: "space-between",
     alignItems:     "center",
     padding:        "0 20px",
     borderTop:      "1px solid var(--pit)",
-    height:         42,
+    height:         36,             // was 42
   },
   navLinks: {
     display:    "flex",
@@ -3602,21 +3685,21 @@ const s = {
     height:     "100%",
   },
   navLink: {
-    display:        "inline-flex",
-    alignItems:     "center",
-    gap:            6,
-    padding:        "0 12px",
-    background:     "transparent",
-    border:         "none",
-    borderBottom:   "2px solid transparent",
-    cursor:         "pointer",
-    fontFamily:     "var(--font-body)",
-    fontSize:       "12px",
-    letterSpacing:  "0.15em",
-    textTransform:  "uppercase",
-    transition:     "color 0.15s, border-color 0.15s",
-    height:         "100%",
-    marginBottom:   "-1px",
+    display:       "inline-flex",
+    alignItems:    "center",
+    gap:           5,               // was 6
+    padding:       "0 10px",        // was 0 12px
+    background:    "transparent",
+    border:        "none",
+    borderBottom:  "2px solid transparent",
+    cursor:        "pointer",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",          // was 12px
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    transition:    "color 0.15s, border-color 0.15s",
+    height:        "100%",
+    marginBottom:  "-1px",
   },
   navLinkIcon: {
     display:    "flex",
@@ -3625,15 +3708,16 @@ const s = {
   navActions: {
     display:    "flex",
     alignItems: "center",
-    gap:        4,
+    gap:        2,                  // was 4
   },
+  // ↓ Icon buttons: was 36×36 → 32×32
   iconBtn: {
     position:       "relative",
     display:        "inline-flex",
     alignItems:     "center",
     justifyContent: "center",
-    width:          36,
-    height:         36,
+    width:          32,
+    height:         32,
     background:     "transparent",
     border:         "1px solid transparent",
     borderRadius:   "4px",
@@ -3662,7 +3746,7 @@ const s = {
     textAlign:    "center",
   },
 
-  // Cart panel
+  // Cart panel — unchanged
   cartOverlay: {
     position:   "fixed",
     inset:      0,
@@ -3696,13 +3780,13 @@ const s = {
     color:         "var(--bone)",
   },
   cartClose: {
-    background:  "transparent",
-    border:      "none",
-    color:       "var(--muted)",
-    fontSize:    18,
-    cursor:      "pointer",
-    padding:     "4px 8px",
-    lineHeight:  1,
+    background: "transparent",
+    border:     "none",
+    color:      "var(--muted)",
+    fontSize:   18,
+    cursor:     "pointer",
+    padding:    "4px 8px",
+    lineHeight: 1,
   },
   cartEmpty: {
     flex:           1,
@@ -3971,6 +4055,36 @@ const styles = {
     justifyContent: "center",
     fontSize: 18,
     fontFamily: "system-ui",
+  },
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\components\RoleRedirect.jsx =====
+
+import { Navigate } from "react-router-dom";
+import useAuth from "../hooks/useAuth";
+
+export default function RoleRedirect() {
+  const { role, loading, user } = useAuth();
+
+  if (loading || (user && role === null)) {
+    return (
+      <div style={styles.loader}>
+        <span className="spinner" />
+      </div>
+    );
+  }
+
+  if (role === "clerk") return <Navigate to="/counter" replace />;
+
+  return <Navigate to="/menu" replace />;
+}
+
+const styles = {
+  loader: {
+    height:         "100vh",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
   },
 };
 
@@ -5301,32 +5415,94 @@ export default function useMenu() {
 
 ===== FILE: C:\Users\tshep\Rooialty\src\Layouts\AppLayout.jsx =====
 
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
+import { useEffect, useState } from "react";
+
+// Top-level destinations — no sensible "back" from these
+const NO_BACK = [
+  "/",
+  "/menu",
+  "/counter",
+  "/clerk",
+  "/orders",
+  "/messages",
+  "/profile",
+  "/about",
+];
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const showBack = !NO_BACK.includes(location.pathname);
+
+  // Hover state — inline styles can't do :hover so we track it in state
+  const [hovered, setHovered] = useState(false);
+
+  // Reset hover when back button disappears
+  useEffect(() => {
+    if (!showBack) setHovered(false);
+  }, [showBack]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div style={s.shell}>
       <Header />
 
-      <main className="flex-1 px-4 py-6 max-w-6xl mx-auto w-full">
+      <main style={s.main}>
         <Outlet />
       </main>
 
-      {/* Global Back Button */}
-      <div className="fixed bottom-4 left-4">
+      {showBack && (
         <button
+          style={{
+            ...s.backBtn,
+            ...(hovered ? s.backBtnHover : {}),
+          }}
           onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-gray-800 text-white rounded-lg shadow hover:bg-gray-700 transition"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          aria-label="Go back"
         >
           ← Back
         </button>
-      </div>
+      )}
     </div>
   );
 }
+
+const s = {
+  shell: {
+    minHeight:     "100vh",
+    display:       "flex",
+    flexDirection: "column",
+    background:    "var(--smoke)",
+  },
+  main: {
+    flex: 1,
+  },
+  backBtn: {
+    position:      "fixed",
+    bottom:        24,
+    left:          20,
+    zIndex:        50,
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "4px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
+    fontSize:      13,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    padding:       "8px 16px",
+    cursor:        "pointer",
+    transition:    "color 0.15s, border-color 0.15s, background 0.15s",
+  },
+  backBtnHover: {
+    color:       "var(--bone)",
+    borderColor: "var(--fire)",
+    background:  "var(--char)",
+  },
+};
 
 ===== FILE: C:\Users\tshep\Rooialty\src\Layouts\DashboardLayout.jsx =====
 
@@ -5429,13 +5605,14 @@ import useAuth from "../hooks/useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { btn, text } from "../styles/components";
 
 export default function Checkout() {
-  const { user } = useAuth();
+  const { user }                   = useAuth();
   const { cart, items, fetchCart } = useCart();
-
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const navigate                   = useNavigate();
+  const [loading, setLoading]      = useState(false);
+  const [error,   setError]        = useState("");
 
   const total = items.reduce(
     (sum, i) => sum + i.quantity * i.item.price,
@@ -5444,8 +5621,8 @@ export default function Checkout() {
 
   const handleCheckout = async () => {
     if (!cart || !items.length) return;
-
     setLoading(true);
+    setError("");
 
     try {
       await supabase
@@ -5456,9 +5633,9 @@ export default function Checkout() {
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
-          user_id: user.id,
-          cart_id: cart.id,
-          total_price: total,
+          user_id:       user.id,
+          cart_id:       cart.id,
+          total_price:   total,
           delivery_type: "collect",
         })
         .select()
@@ -5469,38 +5646,182 @@ export default function Checkout() {
       await supabase.from("order_items").insert(
         items.map((i) => ({
           order_id: order.id,
-          item_id: i.item.id,
+          item_id:  i.item.id,
           quantity: i.quantity,
         }))
       );
 
       await fetchCart();
-      navigate("/orders");
+      navigate("/orders", { replace: true });
     } catch (err) {
       console.error(err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h1>Checkout</h1>
+    <div style={s.page}>
+      <div style={s.inner}>
 
-      {items.map((i) => (
-        <div key={i.id}>
-          {i.item.name} x {i.quantity}
+        <div style={s.titleRow}>
+          <div style={s.eyebrow}>Your Order</div>
+          <h1 style={s.title}>Checkout</h1>
+          <div style={s.divider} />
         </div>
-      ))}
 
-      <h2>Total: R{total.toFixed(2)}</h2>
+        {items.length === 0 ? (
+          <div style={s.empty}>
+            <span style={{ fontSize: 40 }}>🛒</span>
+            <p style={s.emptyText}>Your cart is empty</p>
+          </div>
+        ) : (
+          <>
+            <div style={s.itemsList}>
+              {items.map((i) => (
+                <div key={i.id} style={s.lineItem}>
+                  <div style={s.lineLeft}>
+                    <span style={s.itemName}>{i.item.name}</span>
+                    <span style={s.itemQty}>× {i.quantity}</span>
+                  </div>
+                  <span style={{ ...text.price, fontSize: 18 }}>
+                    R{(i.item.price * i.quantity).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-      <button onClick={handleCheckout} disabled={loading}>
-        {loading ? "Processing..." : "Place Order"}
-      </button>
+            <div style={s.rule} />
+
+            <div style={s.totalRow}>
+              <span style={s.totalLabel}>Total</span>
+              <span style={{ ...text.price, fontSize: 28 }}>
+                R{total.toFixed(2)}
+              </span>
+            </div>
+
+            {error && <p style={{ ...text.error, marginBottom: 12 }}>{error}</p>}
+
+            <button
+              className="btn-primary"
+              style={{
+                ...btn.primary,
+                ...btn.full,
+                marginTop: 8,
+                opacity:   loading ? 0.7 : 1,
+              }}
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? "Processing…" : "Place Order →"}
+            </button>
+          </>
+        )}
+
+      </div>
     </div>
   );
 }
+
+const s = {
+  page: {
+    minHeight:  "100vh",
+    background: "var(--smoke)",
+  },
+  inner: {
+    maxWidth: 520,
+    margin:   "0 auto",
+    padding:  "40px 16px 80px",
+  },
+  titleRow: {
+    marginBottom: 32,
+  },
+  eyebrow: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: "0.35em",
+    textTransform: "uppercase",
+    color:         "var(--fire)",
+    marginBottom:  6,
+  },
+  title: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      "clamp(40px, 8vw, 64px)",
+    letterSpacing: "0.04em",
+    color:         "var(--bone)",
+    margin:        "0 0 12px",
+    lineHeight:    1,
+  },
+  divider: {
+    width:      48,
+    height:     2,
+    background: "var(--fire)",
+  },
+  empty: {
+    display:        "flex",
+    flexDirection:  "column",
+    alignItems:     "center",
+    justifyContent: "center",
+    gap:            12,
+    padding:        "60px 0",
+  },
+  emptyText: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      16,
+    letterSpacing: "0.1em",
+    color:         "var(--muted)",
+  },
+  itemsList: {
+    display:       "flex",
+    flexDirection: "column",
+  },
+  lineItem: {
+    display:        "flex",
+    justifyContent: "space-between",
+    alignItems:     "center",
+    padding:        "14px 0",
+    borderBottom:   "1px solid var(--pit)",
+  },
+  lineLeft: {
+    display:    "flex",
+    alignItems: "baseline",
+    gap:        10,
+  },
+  itemName: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      16,
+    fontWeight:    600,
+    letterSpacing: "0.04em",
+    color:         "var(--bone)",
+  },
+  itemQty: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      13,
+    color:         "var(--muted)",
+    letterSpacing: "0.06em",
+  },
+  rule: {
+    width:      "100%",
+    height:     1,
+    background: "var(--pit)",
+    margin:     "8px 0",
+  },
+  totalRow: {
+    display:        "flex",
+    justifyContent: "space-between",
+    alignItems:     "center",
+    padding:        "16px 0 20px",
+  },
+  totalLabel: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      24,
+    letterSpacing: "0.1em",
+    color:         "var(--muted)",
+    textTransform: "uppercase",
+  },
+};
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\ClerkDashboard.jsx =====
 
@@ -5890,16 +6211,22 @@ const s = {
   confirmedBy:  { fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.1em", color: "var(--muted)", marginTop: 4 },
 };
 
+===== FILE: C:\Users\tshep\Rooialty\src\pages\Counter.jsx =====
+
+import WalkinPanel from "../components/WalkinPanel";
+
+export default function Counter() {
+  return <WalkinPanel />;
+}
+
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Landing.jsx =====
 
 import { useState } from "react";
 import useAuth from "../hooks/useAuth";
 import { useCartContext as useCart } from "../context/CartContext";
 import useMenu from "../hooks/useMenu";
-import Header from "../components/Header";
 import MenuSection from "../components/MenuSection";
 import WalkinPanel from "../components/WalkinPanel";
-import { useNavigate } from "react-router-dom";
 
 const CATEGORY_ORDER = [
   "URBAN KOTAS",
@@ -5910,83 +6237,95 @@ const CATEGORY_ORDER = [
 ];
 
 const ICONS = {
-  "URBAN KOTAS":   "🌯",
-  "ROOIALTY MEALS":"👑",
-  "TO SHARE":      "🤝",
-  "WING BAR":      "🍗",
-  "COLD SERVES":   "🧊",
+  "URBAN KOTAS":    "🌯",
+  "ROOIALTY MEALS": "👑",
+  "TO SHARE":       "🤝",
+  "WING BAR":       "🍗",
+  "COLD SERVES":    "🧊",
 };
 
 export default function Landing() {
   const { user, role, loading } = useAuth();
   const { grouped, loading: menuLoading } = useMenu();
-  const { quantities, cartCount, addItem, removeItem } = useCart();
-
-  const navigate = useNavigate();
+  const { quantities, addItem, removeItem } = useCart();
   const [adding, setAdding] = useState(null);
 
-  if (loading) return <div>Loading...</div>;
-  if (!user)   return <div>Please login</div>;
-
-  // ── Clerk view: walk-in order panel ──────────────────────────────────────
-  if (role === "clerk") {
+  if (loading || (user && role === null)) {
     return (
-      <div>
-        <Header />
-        <WalkinPanel />
+      <div style={styles.loader}>
+        <span className="spinner" />
       </div>
     );
+  }
+
+  // ── Clerk view ────────────────────────────────────────────────────────────
+  if (role === "clerk") {
+    return <WalkinPanel />;
   }
 
   // ── Customer view ─────────────────────────────────────────────────────────
   return (
     <div>
-      <Header />
-
-      {cartCount > 0 && (
-        <button onClick={() => navigate("/checkout")}>
-          Checkout ({cartCount})
-        </button>
-      )}
-
       {menuLoading ? (
-        <p>Loading menu...</p>
+        <p style={styles.menuLoading}>Loading menu…</p>
       ) : (
-        CATEGORY_ORDER.map(
-          (cat) =>
-            grouped[cat] && (
-              <MenuSection
-                key={cat}
-                title={cat}
-                icon={ICONS[cat]}
-                items={grouped[cat]}
-                quantities={quantities}
-                addItem={addItem}
-                removeItem={removeItem}
-                adding={adding}
-                setAdding={setAdding}
-              />
-            )
-        )
+        <div style={styles.menuWrap}>
+          {CATEGORY_ORDER.map(
+            (cat) =>
+              grouped[cat] && (
+                <MenuSection
+                  key={cat}
+                  title={cat}
+                  icon={ICONS[cat]}
+                  items={grouped[cat]}
+                  quantities={quantities}
+                  addItem={addItem}
+                  removeItem={removeItem}
+                  adding={adding}
+                  setAdding={setAdding}
+                />
+              )
+          )}
+        </div>
       )}
     </div>
   );
 }
 
+const styles = {
+  loader: {
+    height:         "100vh",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  menuLoading: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      14,
+    letterSpacing: "0.1em",
+    color:         "var(--muted)",
+    padding:       "40px 24px",
+  },
+  menuWrap: {
+    maxWidth: 900,
+    margin:   "0 auto",
+    padding:  "24px 16px 80px",
+  },
+};
+
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Login.jsx =====
 
-// src/pages/Login.jsx
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { btn, card, input, layout, text } from "../styles/components";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(null);
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [focused,  setFocused]  = useState(null);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -5999,12 +6338,17 @@ export default function Login() {
 
     if (error) { setError(error.message); return; }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .maybeSingle();
 
+    // Clerks home is /counter (walk-in panel), users home is /menu
     if (profile?.role === "clerk") {
-      navigate("/clerk", { replace: true });
+      navigate("/counter", { replace: true });
     } else {
-      navigate("/", { replace: true });
+      navigate("/menu", { replace: true });
     }
   };
 
@@ -6016,7 +6360,7 @@ export default function Login() {
   return (
     <div style={layout.centered}>
       <div style={card.auth}>
-        {/* Logo */}
+
         <div style={s.eyebrow}>Est. in the Streets</div>
         <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
         <div style={s.divider} />
@@ -6058,10 +6402,14 @@ export default function Login() {
 
         <p style={s.linkText}>
           Don't have an account?{" "}
-          <span onClick={() => navigate("/register")} style={text.link}>
+          <span
+            onClick={() => navigate("/register", { replace: true })}
+            style={text.link}
+          >
             Register
           </span>
         </p>
+
       </div>
     </div>
   );
@@ -6069,44 +6417,44 @@ export default function Login() {
 
 const s = {
   eyebrow: {
-    fontFamily: "var(--font-body)",
-    fontSize: "11px",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",
     letterSpacing: "0.3em",
     textTransform: "uppercase",
-    color: "var(--fire)",
-    marginBottom: "6px",
+    color:         "var(--fire)",
+    marginBottom:  "6px",
   },
   title: {
-    fontFamily: "var(--font-display)",
-    fontSize: "56px",
-    lineHeight: 1,
+    fontFamily:    "var(--font-display)",
+    fontSize:      "56px",
+    lineHeight:    1,
     letterSpacing: "0.04em",
-    margin: "0 0 12px",
+    margin:        "0 0 12px",
   },
   divider: {
-    width: "40px",
-    height: "2px",
+    width:      "40px",
+    height:     "2px",
     background: "var(--fire)",
-    margin: "0 auto 16px",
+    margin:     "0 auto 16px",
   },
   subtitle: {
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "13px",
     letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: "24px",
+    color:         "var(--muted)",
+    marginBottom:  "24px",
   },
   form: {
-    display: "flex",
+    display:       "flex",
     flexDirection: "column",
-    gap: "10px",
+    gap:           "10px",
   },
   linkText: {
-    marginTop: "20px",
-    fontSize: "13px",
-    color: "var(--muted)",
-    fontFamily: "var(--font-body)",
+    marginTop:     "20px",
+    fontSize:      "13px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
     letterSpacing: "0.05em",
   },
 };
@@ -7470,12 +7818,12 @@ import { btn, card, layout, text, input } from "../styles/components";
 export default function Profile() {
   const { user, profile } = useAuth();
   const navigate           = useNavigate();
-  const [editing, setEditing]   = useState(false);
-  const [phone, setPhone]       = useState(profile?.phone ?? "");
+  const [editing,  setEditing]  = useState(false);
+  const [phone,    setPhone]    = useState(profile?.phone ?? "");
   const [username, setUsername] = useState(profile?.username ?? "");
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [error,    setError]    = useState("");
 
   const handleSave = async () => {
     setSaving(true);
@@ -7494,7 +7842,7 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate("/");
+    navigate("/login", { replace: true });
   };
 
   if (!user || !profile) {
@@ -7509,7 +7857,6 @@ export default function Profile() {
     <div style={layout.centered}>
       <div style={{ ...card.elevated, width: 420, textAlign: "left" }}>
 
-        {/* Title */}
         <div style={s.titleRow}>
           <h2 style={s.title}>Profile</h2>
           <span style={{
@@ -7528,7 +7875,6 @@ export default function Profile() {
 
         <div style={s.divider} />
 
-        {/* Fields */}
         <div style={s.fields}>
           <Field label="Email" value={profile.email} />
 
@@ -7561,7 +7907,6 @@ export default function Profile() {
         {error && <p style={text.error}>{error}</p>}
         {saved  && <p style={{ ...text.error, color: "var(--gold)" }}>Saved ✓</p>}
 
-        {/* Actions */}
         <div style={s.actions}>
           {editing ? (
             <>
@@ -7619,13 +7964,13 @@ function Field({ label, value }) {
 }
 
 const s = {
-  titleRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  title:    { fontFamily: "var(--font-display)", fontSize: 32, color: "var(--bone)", margin: 0 },
-  divider:  { width: "100%", height: 1, background: "var(--pit)", marginBottom: 20 },
-  fields:   { display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 },
-  field:    { marginBottom: 16 },
+  titleRow:   { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  title:      { fontFamily: "var(--font-display)", fontSize: 32, color: "var(--bone)", margin: 0 },
+  divider:    { width: "100%", height: 1, background: "var(--pit)", marginBottom: 20 },
+  fields:     { display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 },
+  field:      { marginBottom: 16 },
   fieldValue: { fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--bone)", marginTop: 4 },
-  actions:  { display: "flex", gap: 10 },
+  actions:    { display: "flex", gap: 10 },
 };
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Register.jsx =====
@@ -7633,12 +7978,14 @@ const s = {
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { btn, card, input, layout, text } from "../styles/components";
 
 export default function Register() {
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [focused,  setFocused]  = useState(null);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -7659,57 +8006,109 @@ export default function Register() {
     navigate("/login", { replace: true });
   };
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>ROOIALTY</h1>
-        <p style={styles.subtitle}>Create Account</p>
+  const inputStyle = (field) => ({
+    ...input.base,
+    ...(focused === field ? input.focused : {}),
+  });
 
-        <form onSubmit={handleRegister} style={styles.form}>
+  return (
+    <div style={layout.centered}>
+      <div style={card.auth}>
+
+        {/* Logo */}
+        <div style={s.eyebrow}>Est. in the Streets</div>
+        <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
+        <div style={s.divider} />
+        <p style={s.subtitle}>Create an account</p>
+
+        <form onSubmit={handleRegister} style={s.form}>
           <input
-            style={styles.input}
+            style={inputStyle("email")}
+            className="input-base"
+            type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onFocus={() => setFocused("email")}
+            onBlur={() => setFocused(null)}
             required
           />
           <input
-            style={styles.input}
+            style={inputStyle("password")}
+            className="input-base"
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onFocus={() => setFocused("password")}
+            onBlur={() => setFocused(null)}
             required
           />
-          <button style={styles.button} disabled={loading}>
-            {loading ? "Creating..." : "Create Account"}
+          <button
+            style={{ ...btn.primary, ...btn.full, opacity: loading ? 0.7 : 1 }}
+            className="btn-primary"
+            disabled={loading}
+          >
+            {loading ? "Creating account…" : "Create Account"}
           </button>
         </form>
 
-        {error && <p style={styles.error}>{error}</p>}
+        {error && <p style={text.error}>{error}</p>}
 
-        <p style={styles.linkText}>
+        <p style={s.linkText}>
           Already have an account?{" "}
-          <span onClick={() => navigate("/login")} style={styles.link}>
+          <span onClick={() => navigate("/login")} style={text.link}>
             Login
           </span>
         </p>
+
       </div>
     </div>
   );
 }
 
-const styles = {
-  page: { minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f7f7f8" },
-  card: { width: 380, padding: 30, borderRadius: 14, background: "white", border: "1px solid #e5e4e7", boxShadow: "0 10px 25px rgba(0,0,0,0.06)", textAlign: "center" },
-  title: { margin: 0, letterSpacing: "2px" },
-  subtitle: { marginBottom: 20, color: "#666" },
-  form: { display: "flex", flexDirection: "column", gap: 12 },
-  input: { padding: 12, borderRadius: 8, border: "1px solid #ddd", outline: "none" },
-  button: { padding: 12, background: "#aa3bff", color: "white", border: "none", borderRadius: 8, cursor: "pointer" },
-  error: { color: "red", marginTop: 10, fontSize: 14 },
-  linkText: { marginTop: 15, fontSize: 14 },
-  link: { color: "#aa3bff", cursor: "pointer" },
+const s = {
+  eyebrow: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",
+    letterSpacing: "0.3em",
+    textTransform: "uppercase",
+    color:         "var(--fire)",
+    marginBottom:  "6px",
+  },
+  title: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      "56px",
+    lineHeight:    1,
+    letterSpacing: "0.04em",
+    margin:        "0 0 12px",
+  },
+  divider: {
+    width:      "40px",
+    height:     "2px",
+    background: "var(--fire)",
+    margin:     "0 auto 16px",
+  },
+  subtitle: {
+    fontFamily:    "var(--font-body)",
+    fontSize:      "13px",
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color:         "var(--muted)",
+    marginBottom:  "24px",
+  },
+  form: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           "10px",
+  },
+  linkText: {
+    marginTop:     "20px",
+    fontSize:      "13px",
+    color:         "var(--muted)",
+    fontFamily:    "var(--font-body)",
+    letterSpacing: "0.05em",
+  },
 };
 
 ===== FILE: C:\Users\tshep\Rooialty\src\styles\components.js =====

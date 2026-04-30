@@ -5,16 +5,16 @@ import RoleRedirect   from "./components/RoleRedirect";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard      from "./components/RoleGuard";
 
-import Landing        from "./pages/Landing";
-import Login          from "./pages/Login";
-import Register       from "./pages/Register";
-import About          from "./pages/About";
-import Profile        from "./pages/Profile";
-import Messages       from "./pages/Messages";
-import Orders         from "./pages/Orders";
-import Checkout       from "./pages/Checkout";
-import ClerkDashboard from "./pages/ClerkDashboard";
-import Counter        from "./pages/Counter";
+import Landing  from "./pages/Landing";
+import Login    from "./pages/Login";
+import Register from "./pages/Register";
+import About    from "./pages/About";
+import Profile  from "./pages/Profile";
+import Messages from "./pages/Messages";
+import Orders   from "./pages/Orders";
+import Checkout from "./pages/Checkout";
+import Counter  from "./pages/Counter";   // walk-in order menu  → /counter
+import Kitchen  from "./pages/Kitchen";   // order tracking panel → /clerk
 
 export default function App() {
   return (
@@ -46,11 +46,11 @@ export default function App() {
           />
 
           {/* Clerk only */}
-          <Route path="/clerk"
-            element={<RoleGuard allow={["clerk"]}><ClerkDashboard /></RoleGuard>}
-          />
           <Route path="/counter"
             element={<RoleGuard allow={["clerk"]}><Counter /></RoleGuard>}
+          />
+          <Route path="/clerk"
+            element={<RoleGuard allow={["clerk"]}><Kitchen /></RoleGuard>}
           />
 
         </Route>

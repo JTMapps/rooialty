@@ -1,9 +1,12 @@
+// src/pages/Landing.jsx
+//
+// Customer menu page. Clerks cannot reach this route — RoleGuard allow={["user"]}
+// in App.jsx blocks them before this component mounts, so no clerk branch needed.
+
 import { useState } from "react";
-import useAuth from "../hooks/useAuth";
 import { useCartContext as useCart } from "../context/CartContext";
 import useMenu from "../hooks/useMenu";
 import MenuSection from "../components/MenuSection";
-import WalkinPanel from "../components/WalkinPanel";
 
 const CATEGORY_ORDER = [
   "URBAN KOTAS",
@@ -22,12 +25,11 @@ const ICONS = {
 };
 
 export default function Landing() {
-  const { user, role, loading } = useAuth();
-  const { grouped, loading: menuLoading } = useMenu();
+  const { grouped, loading } = useMenu();
   const { quantities, addItem, removeItem } = useCart();
   const [adding, setAdding] = useState(null);
 
-  if (loading || (user && role === null)) {
+  if (loading) {
     return (
       <div style={styles.loader}>
         <span className="spinner" />
@@ -35,35 +37,23 @@ export default function Landing() {
     );
   }
 
-  // ── Clerk view ────────────────────────────────────────────────────────────
-  if (role === "clerk") {
-    return <WalkinPanel />;
-  }
-
-  // ── Customer view ─────────────────────────────────────────────────────────
   return (
-    <div>
-      {menuLoading ? (
-        <p style={styles.menuLoading}>Loading menu…</p>
-      ) : (
-        <div style={styles.menuWrap}>
-          {CATEGORY_ORDER.map(
-            (cat) =>
-              grouped[cat] && (
-                <MenuSection
-                  key={cat}
-                  title={cat}
-                  icon={ICONS[cat]}
-                  items={grouped[cat]}
-                  quantities={quantities}
-                  addItem={addItem}
-                  removeItem={removeItem}
-                  adding={adding}
-                  setAdding={setAdding}
-                />
-              )
-          )}
-        </div>
+    <div style={styles.menuWrap}>
+      {CATEGORY_ORDER.map(
+        (cat) =>
+          grouped[cat] && (
+            <MenuSection
+              key={cat}
+              title={cat}
+              icon={ICONS[cat]}
+              items={grouped[cat]}
+              quantities={quantities}
+              addItem={addItem}
+              removeItem={removeItem}
+              adding={adding}
+              setAdding={setAdding}
+            />
+          )
       )}
     </div>
   );
@@ -71,17 +61,10 @@ export default function Landing() {
 
 const styles = {
   loader: {
-    height:         "100vh",
+    height:         "50vh",
     display:        "flex",
     alignItems:     "center",
     justifyContent: "center",
-  },
-  menuLoading: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      14,
-    letterSpacing: "0.1em",
-    color:         "var(--muted)",
-    padding:       "40px 24px",
   },
   menuWrap: {
     maxWidth: 900,
