@@ -1,5 +1,6 @@
-// src/pages/Kitchen.jsx  (was ClerkDashboard.jsx)
+// src/pages/Kitchen.jsx
 // Clerk order-tracking panel — shown at /clerk
+// Fully responsive: mobile-first card layout, compact pipeline on small screens.
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -14,14 +15,27 @@ const TRANSITIONS = {
 const STATUS_LABEL = {
   pending:   "Pending",
   confirmed: "Confirmed",
-  ready:     "Ready for Pickup",
+  ready:     "Ready",          // shortened for mobile badges
   completed: "Completed",
   cancelled: "Cancelled",
 };
 
 const DELIVERY_ICON = { collect: "🏪", call: "🚗" };
 
+// ── Mobile breakpoint hook ────────────────────────────────────────────────────
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function Kitchen() {
+  const isMobile = useIsMobile();
+
   const [orders,   setOrders]   = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [etaInput, setEtaInput] = useState({});
@@ -71,7 +85,6 @@ export default function Kitchen() {
 
   useEffect(() => {
     fetchOrders();
-
     const channel = supabase
       .channel("clerk-orders")
       .on("postgres_changes",
@@ -79,7 +92,6 @@ export default function Kitchen() {
         fetchOrders
       )
       .subscribe();
-
     return () => supabase.removeChannel(channel);
   }, []);
 
@@ -87,18 +99,15 @@ export default function Kitchen() {
   const advance = async (order) => {
     const transition = TRANSITIONS[order.status];
     if (!transition) return;
-
     setActing(order.order_id);
 
     const update = { status: transition.next };
-
     if (order.status === "pending") {
       const mins = parseInt(etaInput[order.order_id]);
       if (!isNaN(mins) && mins > 0) {
         update.eta = new Date(Date.now() + mins * 60 * 1000).toISOString();
       }
     }
-
     if (transition.next === "completed") {
       update.completed_at = new Date().toISOString();
     }
@@ -110,21 +119,17 @@ export default function Kitchen() {
 
     if (!error) {
       setOrders((prev) =>
-        prev.map((o) =>
-          o.order_id === order.order_id ? { ...o, ...update } : o
-        )
+        prev.map((o) => o.order_id === order.order_id ? { ...o, ...update } : o)
       );
     } else {
       console.error("advance error:", error);
     }
-
     setActing(null);
   };
 
   // ── Cancel — optimistic ───────────────────────────────────────────────────
   const cancel = async (orderId) => {
     if (!window.confirm("Cancel this order?")) return;
-
     setActing(orderId);
 
     const update = {
@@ -139,14 +144,11 @@ export default function Kitchen() {
 
     if (!error) {
       setOrders((prev) =>
-        prev.map((o) =>
-          o.order_id === orderId ? { ...o, ...update } : o
-        )
+        prev.map((o) => o.order_id === orderId ? { ...o, ...update } : o)
       );
     } else {
       console.error("cancel error:", error);
     }
-
     setActing(null);
   };
 
@@ -164,36 +166,80 @@ export default function Kitchen() {
   return (
     <div style={s.page}>
 
-      <div style={s.pageHead}>
-        <h1 style={s.title}>Kitchen</h1>
-        <div style={s.pipeline}>
+      {/* ── Page head ── */}
+      <div style={{
+        ...s.pageHead,
+        padding:       isMobile ? "16px 16px 0" : "24px 24px 0",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems:    isMobile ? "flex-start" : "center",
+        gap:           isMobile ? 12 : 16,
+      }}>
+        <h1 style={{
+          ...s.title,
+          fontSize: isMobile ? 36 : 48,
+        }}>
+          Kitchen
+        </h1>
+
+        {/* Pipeline status badges */}
+        <div style={{
+          ...s.pipeline,
+          width:  isMobile ? "100%" : "auto",
+          gap:    isMobile ? 8 : 16,
+        }}>
           {["pending", "confirmed", "ready"].map((st) => (
-            <div key={st} style={s.pipeItem}>
-              <span style={{ ...badge[st], fontSize: 13 }}>{STATUS_LABEL[st]}</span>
-              <span style={s.pipeCount}>{counts[st] || 0}</span>
+            <div key={st} style={{
+              ...s.pipeItem,
+              flex:      isMobile ? "1 1 0" : "none",
+              padding:   isMobile ? "8px 4px" : 0,
+              background:isMobile ? "var(--ash)" : "transparent",
+              border:    isMobile ? "1px solid var(--pit)" : "none",
+              borderRadius: isMobile ? "4px" : 0,
+            }}>
+              <span style={{ ...badge[st], fontSize: isMobile ? 10 : 13 }}>
+                {STATUS_LABEL[st]}
+              </span>
+              <span style={{
+                ...s.pipeCount,
+                fontSize: isMobile ? 24 : 28,
+              }}>
+                {counts[st] || 0}
+              </span>
             </div>
           ))}
         </div>
       </div>
 
-      <div style={s.tabs}>
+      {/* ── Tabs ── */}
+      <div style={{
+        ...s.tabs,
+        padding: isMobile ? "16px 16px 0" : "20px 24px 0",
+      }}>
         <button
-          style={{ ...s.tab, ...(tab === "active"    ? s.tabActive : {}) }}
+          style={{ ...s.tab, ...(tab === "active"    ? s.tabActive : {}), fontSize: isMobile ? 12 : 14 }}
           onClick={() => setTab("active")}
         >
           Active ({active.length})
         </button>
         <button
-          style={{ ...s.tab, ...(tab === "completed" ? s.tabActive : {}) }}
+          style={{ ...s.tab, ...(tab === "completed" ? s.tabActive : {}), fontSize: isMobile ? 12 : 14 }}
           onClick={() => setTab("completed")}
         >
           Completed ({completed.length})
         </button>
       </div>
 
-      <div style={s.cards}>
+      {/* ── Cards ── */}
+      <div style={{
+        ...s.cards,
+        gridTemplateColumns: isMobile
+          ? "1fr"
+          : "repeat(auto-fill, minmax(320px, 1fr))",
+        padding: isMobile ? "16px" : "24px",
+        gap:     isMobile ? 12 : 16,
+      }}>
         {displayed.length === 0 && (
-          <p style={{ color: "var(--muted)", fontFamily: "var(--font-body)", padding: 24 }}>
+          <p style={{ color: "var(--muted)", fontFamily: "var(--font-body)", padding: isMobile ? "12px 0" : 24 }}>
             No orders here.
           </p>
         )}
@@ -207,8 +253,9 @@ export default function Kitchen() {
           return (
             <div key={o.order_id} style={s.card}>
 
+              {/* Card head */}
               <div style={s.cardHead}>
-                <div style={s.cardHeadLeft}>
+                <div style={{ ...s.cardHeadLeft, gap: isMobile ? 6 : 10 }}>
                   <span style={badge[o.status] ?? badge.pending}>
                     {STATUS_LABEL[o.status] ?? o.status}
                   </span>
@@ -216,7 +263,7 @@ export default function Kitchen() {
                     {DELIVERY_ICON[o.delivery_type]}{" "}
                     {o.delivery_type === "call" ? "Delivery" : "Collect"}
                   </span>
-                  <span style={{ ...text.price, fontSize: 18 }}>
+                  <span style={{ ...text.price, fontSize: isMobile ? 16 : 18 }}>
                     R{Number(o.total_price).toFixed(2)}
                   </span>
                 </div>
@@ -227,6 +274,7 @@ export default function Kitchen() {
                 </span>
               </div>
 
+              {/* Client info */}
               <div style={s.clientRow}>
                 <span style={s.clientName}>@{o.client_username}</span>
                 {o.client_phone && (
@@ -239,6 +287,7 @@ export default function Kitchen() {
                 )}
               </div>
 
+              {/* ETA display */}
               {o.eta && (
                 <div style={s.etaRow}>
                   <span style={s.etaLabel}>ETA</span>
@@ -268,6 +317,7 @@ export default function Kitchen() {
                 </p>
               )}
 
+              {/* Line items */}
               {lineItems.length > 0 && (
                 <>
                   <button
@@ -291,6 +341,7 @@ export default function Kitchen() {
                 </>
               )}
 
+              {/* ETA input (pending only) */}
               {o.status === "pending" && (
                 <div style={s.etaInputRow}>
                   <label style={text.label}>ETA (mins)</label>
@@ -307,10 +358,21 @@ export default function Kitchen() {
                 </div>
               )}
 
+              {/* Action buttons */}
               {transition && (
-                <div style={s.actions}>
+                <div style={{
+                  ...s.actions,
+                  flexDirection: isMobile ? "column" : "row",
+                }}>
                   <button
-                    style={{ ...btn.primary, ...btn.sm, opacity: isActing ? 0.6 : 1 }}
+                    style={{
+                      ...btn.primary,
+                      ...btn.sm,
+                      ...(isMobile ? btn.full : {}),
+                      opacity: isActing ? 0.6 : 1,
+                      fontSize: isMobile ? 16 : 14,
+                      padding:  isMobile ? "12px 16px" : "8px 16px",
+                    }}
                     disabled={isActing}
                     onClick={() => advance(o)}
                   >
@@ -319,8 +381,13 @@ export default function Kitchen() {
                   {o.status === "pending" && (
                     <button
                       style={{
-                        ...btn.ghost, ...btn.sm,
-                        color: "var(--ember)", borderColor: "var(--ember)",
+                        ...btn.ghost,
+                        ...btn.sm,
+                        ...(isMobile ? btn.full : {}),
+                        color:       "var(--ember)",
+                        borderColor: "var(--ember)",
+                        fontSize:    isMobile ? 14 : 12,
+                        padding:     isMobile ? "11px 16px" : "8px 16px",
                       }}
                       disabled={isActing}
                       onClick={() => cancel(o.order_id)}
@@ -348,28 +415,32 @@ export default function Kitchen() {
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = {
   page:         { minHeight: "100vh", background: "var(--smoke)", paddingBottom: 60 },
-  pageHead:     { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 24px 0", flexWrap: "wrap", gap: 16 },
-  title:        { fontFamily: "var(--font-display)", fontSize: 48, letterSpacing: "0.04em", color: "var(--bone)", margin: 0 },
-  pipeline:     { display: "flex", gap: 16, flexWrap: "wrap" },
+  pageHead:     { display: "flex", justifyContent: "space-between", flexWrap: "wrap" },
+  title:        { fontFamily: "var(--font-display)", letterSpacing: "0.04em", color: "var(--bone)", margin: 0 },
+  pipeline:     { display: "flex", flexWrap: "wrap" },
   pipeItem:     { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
-  pipeCount:    { fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", lineHeight: 1 },
-  tabs:         { display: "flex", padding: "20px 24px 0", borderBottom: "1px solid var(--pit)" },
+  pipeCount:    { fontFamily: "var(--font-display)", color: "var(--bone)", lineHeight: 1 },
+  tabs:         { display: "flex", borderBottom: "1px solid var(--pit)" },
   tab: {
     background: "transparent", border: "none", borderBottom: "2px solid transparent",
     padding: "8px 20px", cursor: "pointer", fontFamily: "var(--font-body)",
-    fontSize: 14, letterSpacing: "0.15em", textTransform: "uppercase",
+    letterSpacing: "0.15em", textTransform: "uppercase",
     color: "var(--muted)", marginBottom: "-1px",
   },
   tabActive:    { color: "var(--fire)", borderBottom: "2px solid var(--fire)" },
-  cards:        { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16, padding: 24 },
-  card:         { background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: "4px", padding: "16px", display: "flex", flexDirection: "column", gap: 10 },
+  cards:        { display: "grid" },
+  card: {
+    background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: "4px",
+    padding: "16px", display: "flex", flexDirection: "column", gap: 10,
+  },
   cardHead:     { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
-  cardHeadLeft: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  cardHeadLeft: { display: "flex", alignItems: "center", flexWrap: "wrap" },
   deliveryTag:  { fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.1em", color: "var(--muted)", textTransform: "uppercase" },
-  time:         { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)" },
-  clientRow:    { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 },
+  time:         { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)", flexShrink: 0 },
+  clientRow:    { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 },
   clientName:   { fontFamily: "var(--font-body)", fontSize: 15, fontWeight: 700, color: "var(--bone)", letterSpacing: "0.05em" },
   clientContact:{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--fire)", textDecoration: "none", letterSpacing: "0.05em" },
   address:      { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)", letterSpacing: "0.04em" },
@@ -382,6 +453,6 @@ const s = {
   lineItem:     { display: "flex", justifyContent: "space-between", fontFamily: "var(--font-body)", fontSize: 14, color: "var(--bone)", letterSpacing: "0.04em" },
   etaInputRow:  { display: "flex", alignItems: "center", gap: 10 },
   etaInput:     { width: 80, padding: "6px 10px", background: "#161616", border: "1px solid var(--pit)", borderRadius: "3px", color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" },
-  actions:      { display: "flex", gap: 10, marginTop: 4, flexWrap: "wrap" },
+  actions:      { display: "flex", gap: 8, marginTop: 4 },
   confirmedBy:  { fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.1em", color: "var(--muted)", marginTop: 4 },
 };

@@ -2935,16 +2935,16 @@ import RoleRedirect   from "./components/RoleRedirect";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard      from "./components/RoleGuard";
 
-import Landing        from "./pages/Landing";
-import Login          from "./pages/Login";
-import Register       from "./pages/Register";
-import About          from "./pages/About";
-import Profile        from "./pages/Profile";
-import Messages       from "./pages/Messages";
-import Orders         from "./pages/Orders";
-import Checkout       from "./pages/Checkout";
-import ClerkDashboard from "./pages/ClerkDashboard";
-import Counter        from "./pages/Counter";
+import Landing  from "./pages/Landing";
+import Login    from "./pages/Login";
+import Register from "./pages/Register";
+import About    from "./pages/About";
+import Profile  from "./pages/Profile";
+import Messages from "./pages/Messages";
+import Orders   from "./pages/Orders";
+import Checkout from "./pages/Checkout";
+import Counter  from "./pages/Counter";   // walk-in order menu  → /counter
+import Kitchen  from "./pages/Kitchen";   // order tracking panel → /clerk
 
 export default function App() {
   return (
@@ -2976,11 +2976,11 @@ export default function App() {
           />
 
           {/* Clerk only */}
-          <Route path="/clerk"
-            element={<RoleGuard allow={["clerk"]}><ClerkDashboard /></RoleGuard>}
-          />
           <Route path="/counter"
             element={<RoleGuard allow={["clerk"]}><Counter /></RoleGuard>}
+          />
+          <Route path="/clerk"
+            element={<RoleGuard allow={["clerk"]}><Kitchen /></RoleGuard>}
           />
 
         </Route>
@@ -5823,7 +5823,21 @@ const s = {
   },
 };
 
-===== FILE: C:\Users\tshep\Rooialty\src\pages\ClerkDashboard.jsx =====
+===== FILE: C:\Users\tshep\Rooialty\src\pages\Counter.jsx =====
+
+// src/pages/Counter.jsx
+// Walk-in order entry — shown at /counter
+
+import WalkinPanel from "../components/WalkinPanel";
+
+export default function Counter() {
+  return <WalkinPanel />;
+}
+
+===== FILE: C:\Users\tshep\Rooialty\src\pages\Kitchen.jsx =====
+
+// src/pages/Kitchen.jsx  (was ClerkDashboard.jsx)
+// Clerk order-tracking panel — shown at /clerk
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -5845,7 +5859,7 @@ const STATUS_LABEL = {
 
 const DELIVERY_ICON = { collect: "🏪", call: "🚗" };
 
-export default function ClerkDashboard() {
+export default function Kitchen() {
   const [orders,   setOrders]   = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [etaInput, setEtaInput] = useState({});
@@ -5933,7 +5947,6 @@ export default function ClerkDashboard() {
       .eq("id", order.order_id);
 
     if (!error) {
-      // Patch local state immediately — no refresh needed
       setOrders((prev) =>
         prev.map((o) =>
           o.order_id === order.order_id ? { ...o, ...update } : o
@@ -6211,22 +6224,17 @@ const s = {
   confirmedBy:  { fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.1em", color: "var(--muted)", marginTop: 4 },
 };
 
-===== FILE: C:\Users\tshep\Rooialty\src\pages\Counter.jsx =====
-
-import WalkinPanel from "../components/WalkinPanel";
-
-export default function Counter() {
-  return <WalkinPanel />;
-}
-
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Landing.jsx =====
 
+// src/pages/Landing.jsx
+//
+// Customer menu page. Clerks cannot reach this route — RoleGuard allow={["user"]}
+// in App.jsx blocks them before this component mounts, so no clerk branch needed.
+
 import { useState } from "react";
-import useAuth from "../hooks/useAuth";
 import { useCartContext as useCart } from "../context/CartContext";
 import useMenu from "../hooks/useMenu";
 import MenuSection from "../components/MenuSection";
-import WalkinPanel from "../components/WalkinPanel";
 
 const CATEGORY_ORDER = [
   "URBAN KOTAS",
@@ -6245,12 +6253,11 @@ const ICONS = {
 };
 
 export default function Landing() {
-  const { user, role, loading } = useAuth();
-  const { grouped, loading: menuLoading } = useMenu();
+  const { grouped, loading } = useMenu();
   const { quantities, addItem, removeItem } = useCart();
   const [adding, setAdding] = useState(null);
 
-  if (loading || (user && role === null)) {
+  if (loading) {
     return (
       <div style={styles.loader}>
         <span className="spinner" />
@@ -6258,35 +6265,23 @@ export default function Landing() {
     );
   }
 
-  // ── Clerk view ────────────────────────────────────────────────────────────
-  if (role === "clerk") {
-    return <WalkinPanel />;
-  }
-
-  // ── Customer view ─────────────────────────────────────────────────────────
   return (
-    <div>
-      {menuLoading ? (
-        <p style={styles.menuLoading}>Loading menu…</p>
-      ) : (
-        <div style={styles.menuWrap}>
-          {CATEGORY_ORDER.map(
-            (cat) =>
-              grouped[cat] && (
-                <MenuSection
-                  key={cat}
-                  title={cat}
-                  icon={ICONS[cat]}
-                  items={grouped[cat]}
-                  quantities={quantities}
-                  addItem={addItem}
-                  removeItem={removeItem}
-                  adding={adding}
-                  setAdding={setAdding}
-                />
-              )
-          )}
-        </div>
+    <div style={styles.menuWrap}>
+      {CATEGORY_ORDER.map(
+        (cat) =>
+          grouped[cat] && (
+            <MenuSection
+              key={cat}
+              title={cat}
+              icon={ICONS[cat]}
+              items={grouped[cat]}
+              quantities={quantities}
+              addItem={addItem}
+              removeItem={removeItem}
+              adding={adding}
+              setAdding={setAdding}
+            />
+          )
       )}
     </div>
   );
@@ -6294,17 +6289,10 @@ export default function Landing() {
 
 const styles = {
   loader: {
-    height:         "100vh",
+    height:         "50vh",
     display:        "flex",
     alignItems:     "center",
     justifyContent: "center",
-  },
-  menuLoading: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      14,
-    letterSpacing: "0.1em",
-    color:         "var(--muted)",
-    padding:       "40px 24px",
   },
   menuWrap: {
     maxWidth: 900,
