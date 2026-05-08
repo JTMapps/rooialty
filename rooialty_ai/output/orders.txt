@@ -1,0 +1,35 @@
+TABLE: orders
+
+COLUMNS:
+- cancel_reason (text)
+- cancelled_at (timestamp with time zone)
+- cart_id (uuid)
+- completed_at (timestamp with time zone)
+- confirmed_at (timestamp with time zone)
+- confirmed_by (uuid)
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- delivery_address (text)
+- delivery_type (delivery_type (collect | call))
+- eta (timestamp with time zone)
+- id (uuid)
+- is_walkin (boolean)
+- status (order_status (pending | confirmed | ready | completed | cancelled))
+- total_price (numeric(10,2))
+- user_id (uuid)
+- walkin_label (text)
+
+CONSTRAINTS:
+- CHECK (delivery_type <> 'call'::delivery_type OR delivery_address IS NOT NULL AND TRIM(BOTH FROM delivery_address) <> ''::text)
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL
+- FOREIGN KEY (confirmed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE RESTRICT
+
+RELATIONSHIPS:
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL
+- FOREIGN KEY (confirmed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE RESTRICT
+
+BUSINESS RULES:
+- CHECK (delivery_type <> 'call'::delivery_type OR delivery_address IS NOT NULL AND TRIM(BOTH FROM delivery_address) <> ''::text)

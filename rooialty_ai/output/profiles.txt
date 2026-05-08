@@ -1,0 +1,20 @@
+TABLE: profiles
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- email (text)
+- id (uuid)
+- is_active (boolean)
+- last_seen_at (timestamp with time zone)
+- phone (text)
+- role (user_role (user | clerk | office))
+- username (text)
+
+CONSTRAINTS:
+- UNIQUE (email)
+- FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+- UNIQUE (username)
+
+RELATIONSHIPS:
+- FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE

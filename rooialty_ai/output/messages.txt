@@ -1,0 +1,25 @@
+TABLE: messages
+
+COLUMNS:
+- body (text)
+- clerk_id (uuid)
+- created_at (timestamp with time zone)
+- id (uuid)
+- is_read (boolean)
+- recipient_id (uuid)
+- sender_id (uuid)
+
+CONSTRAINTS:
+- CHECK (TRIM(BOTH FROM body) <> ''::text)
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (recipient_id) REFERENCES profiles(id) ON DELETE CASCADE
+- FOREIGN KEY (sender_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+RELATIONSHIPS:
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (recipient_id) REFERENCES profiles(id) ON DELETE CASCADE
+- FOREIGN KEY (sender_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+BUSINESS RULES:
+- CHECK (TRIM(BOTH FROM body) <> ''::text)

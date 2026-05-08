@@ -1,0 +1,21 @@
+TABLE: stock_reconciliations
+
+COLUMNS:
+- applied_at (timestamp with time zone)
+- approved_at (timestamp with time zone)
+- approved_by (uuid)
+- conducted_at (timestamp with time zone)
+- conducted_by (uuid)
+- created_at (timestamp with time zone)
+- id (uuid)
+- note (text)
+- status (reconciliation_status (draft | submitted | approved | applied))
+
+CONSTRAINTS:
+- FOREIGN KEY (approved_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (conducted_by) REFERENCES profiles(id) ON DELETE RESTRICT
+- PRIMARY KEY (id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (approved_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (conducted_by) REFERENCES profiles(id) ON DELETE RESTRICT

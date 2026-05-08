@@ -1,0 +1,22 @@
+TABLE: stock_reconciliation_lines
+
+COLUMNS:
+- counted_stock (numeric(10,4))
+- delta (numeric(10,4))
+- id (uuid)
+- ingredient_id (uuid)
+- movement_id (uuid)
+- reconciliation_id (uuid)
+- system_stock_at_count (numeric(10,4))
+
+CONSTRAINTS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (movement_id) REFERENCES inventory_movements(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (reconciliation_id) REFERENCES stock_reconciliations(id) ON DELETE CASCADE
+- UNIQUE (reconciliation_id, ingredient_id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (movement_id) REFERENCES inventory_movements(id) ON DELETE SET NULL
+- FOREIGN KEY (reconciliation_id) REFERENCES stock_reconciliations(id) ON DELETE CASCADE

@@ -1,0 +1,17 @@
+TABLE: items
+
+COLUMNS:
+- category (item_categories (URBAN KOTAS | ROOIALTY MEALS | TO SHARE | WINGS | WING BAR | COLD SERVES))
+- deleted_at (timestamp with time zone)
+- id (uuid)
+- in_stock (boolean)
+- item_type (item_type (food | drink))
+- name (text)
+- price (numeric)
+
+CONSTRAINTS:
+- PRIMARY KEY (id)
+- CHECK (price >= 0::numeric)
+
+BUSINESS RULES:
+- CHECK (price >= 0::numeric)

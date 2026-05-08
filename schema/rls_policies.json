@@ -1,0 +1,412 @@
+[
+  {
+    "schema_name": "public",
+    "policy_name": "availability: public read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "true",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"availability: public read\" ON public.availability FOR SELECT TO PUBLIC USING (true)"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "cart items belong to user cart",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM carts c\n  WHERE ((c.id = cart_items.cart_id) AND (c.user_id = auth.uid()))))",
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM carts c\n  WHERE ((c.id = cart_items.cart_id) AND (c.user_id = auth.uid()))))",
+    "policy_definition_text": "CREATE POLICY \"cart items belong to user cart\" ON public.cart_items FOR * TO PUBLIC USING ((EXISTS ( SELECT 1\n   FROM carts c\n  WHERE ((c.id = cart_items.cart_id) AND (c.user_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1\n   FROM carts c\n  WHERE ((c.id = cart_items.cart_id) AND (c.user_id = auth.uid())))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "clerk view active orders",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'clerk'::user_role))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"clerk view active orders\" ON public.orders FOR SELECT TO PUBLIC USING ((EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'clerk'::user_role)))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "clerks can update orders",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'clerk'::user_role))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"clerks can update orders\" ON public.orders FOR UPDATE TO PUBLIC USING ((EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = 'clerk'::user_role)))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "ingredient_stock_cache: authenticated read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth.uid() IS NOT NULL)",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"ingredient_stock_cache: authenticated read\" ON public.ingredient_stock_cache FOR SELECT TO PUBLIC USING ((auth.uid() IS NOT NULL))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "ingredient_stock_cache: no direct write",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "false",
+    "with_check_expression": "false",
+    "policy_definition_text": "CREATE POLICY \"ingredient_stock_cache: no direct write\" ON public.ingredient_stock_cache FOR * TO PUBLIC USING (false) WITH CHECK (false)"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "ingredients: authenticated read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((auth.uid() IS NOT NULL) AND (deleted_at IS NULL))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"ingredients: authenticated read\" ON public.ingredients FOR SELECT TO PUBLIC USING (((auth.uid() IS NOT NULL) AND (deleted_at IS NULL)))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "ingredients: office write",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = 'office'::user_role)",
+    "with_check_expression": "(auth_role() = 'office'::user_role)",
+    "policy_definition_text": "CREATE POLICY \"ingredients: office write\" ON public.ingredients FOR * TO PUBLIC USING ((auth_role() = 'office'::user_role)) WITH CHECK ((auth_role() = 'office'::user_role))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "insert order items for own orders",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.user_id = auth.uid()))))",
+    "policy_definition_text": "CREATE POLICY \"insert order items for own orders\" ON public.order_items FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.user_id = auth.uid())))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "insert order items for walkin orders",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.is_walkin = true) AND (EXISTS ( SELECT 1\n           FROM profiles\n          WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))))",
+    "policy_definition_text": "CREATE POLICY \"insert order items for walkin orders\" ON public.order_items FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.is_walkin = true) AND (EXISTS ( SELECT 1\n           FROM profiles\n          WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "insert own cart",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(user_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"insert own cart\" ON public.carts FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "insert own orders",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(user_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"insert own orders\" ON public.orders FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "inventory_movements: no delete",
+    "for_command": "DELETE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "false",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"inventory_movements: no delete\" ON public.inventory_movements FOR DELETE TO PUBLIC USING (false)"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "inventory_movements: no update",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "false",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"inventory_movements: no update\" ON public.inventory_movements FOR UPDATE TO PUBLIC USING (false)"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "inventory_movements: office insert",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "((auth_role() = 'office'::user_role) AND (reason = ANY (ARRAY['purchase'::movement_reason, 'manual_adjustment'::movement_reason, 'wastage'::movement_reason, 'spoilage'::movement_reason, 'opening_stock'::movement_reason, 'transfer_in'::movement_reason, 'transfer_out'::movement_reason])))",
+    "policy_definition_text": "CREATE POLICY \"inventory_movements: office insert\" ON public.inventory_movements FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK (((auth_role() = 'office'::user_role) AND (reason = ANY (ARRAY['purchase'::movement_reason, 'manual_adjustment'::movement_reason, 'wastage'::movement_reason, 'spoilage'::movement_reason, 'opening_stock'::movement_reason, 'transfer_in'::movement_reason, 'transfer_out'::movement_reason]))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "inventory_movements: staff read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = ANY (ARRAY['office'::user_role, 'clerk'::user_role]))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"inventory_movements: staff read\" ON public.inventory_movements FOR SELECT TO PUBLIC USING ((auth_role() = ANY (ARRAY['office'::user_role, 'clerk'::user_role])))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "item_ingredients: authenticated read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((auth.uid() IS NOT NULL) AND (deleted_at IS NULL))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"item_ingredients: authenticated read\" ON public.item_ingredients FOR SELECT TO PUBLIC USING (((auth.uid() IS NOT NULL) AND (deleted_at IS NULL)))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "item_ingredients: office write",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = 'office'::user_role)",
+    "with_check_expression": "(auth_role() = 'office'::user_role)",
+    "policy_definition_text": "CREATE POLICY \"item_ingredients: office write\" ON public.item_ingredients FOR * TO PUBLIC USING ((auth_role() = 'office'::user_role)) WITH CHECK ((auth_role() = 'office'::user_role))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "items: office write",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = 'office'::user_role)",
+    "with_check_expression": "(auth_role() = 'office'::user_role)",
+    "policy_definition_text": "CREATE POLICY \"items: office write\" ON public.items FOR * TO PUBLIC USING ((auth_role() = 'office'::user_role)) WITH CHECK ((auth_role() = 'office'::user_role))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "items: public read",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(deleted_at IS NULL)",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"items: public read\" ON public.items FOR SELECT TO PUBLIC USING ((deleted_at IS NULL))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: clerk mark store read",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "with_check_expression": "((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "policy_definition_text": "CREATE POLICY \"messages: clerk mark store read\" ON public.messages FOR UPDATE TO PUBLIC USING (((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))) WITH CHECK (((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: clerk sees sent replies",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((recipient_id IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"messages: clerk sees sent replies\" ON public.messages FOR SELECT TO PUBLIC USING (((recipient_id IS NOT NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: clerk sees store inbox",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"messages: clerk sees store inbox\" ON public.messages FOR SELECT TO PUBLIC USING (((recipient_id IS NULL) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: mark received read",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(recipient_id = auth.uid())",
+    "with_check_expression": "(recipient_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"messages: mark received read\" ON public.messages FOR UPDATE TO PUBLIC USING ((recipient_id = auth.uid())) WITH CHECK ((recipient_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: send as self",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(sender_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"messages: send as self\" ON public.messages FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((sender_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "messages: user sees own thread",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((sender_id = auth.uid()) OR (recipient_id = auth.uid()))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"messages: user sees own thread\" ON public.messages FOR SELECT TO PUBLIC USING (((sender_id = auth.uid()) OR (recipient_id = auth.uid())))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "orders: clerk creates walkin",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "((is_walkin = true) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "policy_definition_text": "CREATE POLICY \"orders: clerk creates walkin\" ON public.orders FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK (((is_walkin = true) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "orders: clerk sees walkin",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((is_walkin = true) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role)))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"orders: clerk sees walkin\" ON public.orders FOR SELECT TO PUBLIC USING (((is_walkin = true) AND (EXISTS ( SELECT 1\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'clerk'::user_role))))))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "orders: user cancels own pending",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((user_id = auth.uid()) AND (status = 'pending'::order_status))",
+    "with_check_expression": "(status = 'cancelled'::order_status)",
+    "policy_definition_text": "CREATE POLICY \"orders: user cancels own pending\" ON public.orders FOR UPDATE TO PUBLIC USING (((user_id = auth.uid()) AND (status = 'pending'::order_status))) WITH CHECK ((status = 'cancelled'::order_status))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "orders: user creates own",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "(user_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"orders: user creates own\" ON public.orders FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "orders: user sees own",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(user_id = auth.uid())",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"orders: user sees own\" ON public.orders FOR SELECT TO PUBLIC USING ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "profiles: authenticated read basic",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth.uid() IS NOT NULL)",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"profiles: authenticated read basic\" ON public.profiles FOR SELECT TO PUBLIC USING ((auth.uid() IS NOT NULL))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "profiles: own read/write",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(id = auth.uid())",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"profiles: own read/write\" ON public.profiles FOR * TO PUBLIC USING ((id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "read own profile",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(id = auth.uid())",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"read own profile\" ON public.profiles FOR SELECT TO PUBLIC USING ((id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "reconciliation_lines: office full access",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = 'office'::user_role)",
+    "with_check_expression": "(auth_role() = 'office'::user_role)",
+    "policy_definition_text": "CREATE POLICY \"reconciliation_lines: office full access\" ON public.stock_reconciliation_lines FOR * TO PUBLIC USING ((auth_role() = 'office'::user_role)) WITH CHECK ((auth_role() = 'office'::user_role))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "reconciliations: office full access",
+    "for_command": "*",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(auth_role() = 'office'::user_role)",
+    "with_check_expression": "(auth_role() = 'office'::user_role)",
+    "policy_definition_text": "CREATE POLICY \"reconciliations: office full access\" ON public.stock_reconciliations FOR * TO PUBLIC USING ((auth_role() = 'office'::user_role)) WITH CHECK ((auth_role() = 'office'::user_role))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "select own cart",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(user_id = auth.uid())",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"select own cart\" ON public.carts FOR SELECT TO PUBLIC USING ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "select own orders",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(user_id = auth.uid())",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"select own orders\" ON public.orders FOR SELECT TO PUBLIC USING ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "update own cart",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "((user_id = auth.uid()) AND (status = 'active'::cart_status))",
+    "with_check_expression": "(user_id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"update own cart\" ON public.carts FOR UPDATE TO PUBLIC USING (((user_id = auth.uid()) AND (status = 'active'::cart_status))) WITH CHECK ((user_id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "update own profile",
+    "for_command": "UPDATE",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(id = auth.uid())",
+    "with_check_expression": "(id = auth.uid())",
+    "policy_definition_text": "CREATE POLICY \"update own profile\" ON public.profiles FOR UPDATE TO PUBLIC USING ((id = auth.uid())) WITH CHECK ((id = auth.uid()))"
+  },
+  {
+    "schema_name": "public",
+    "policy_name": "view order items via own orders",
+    "for_command": "SELECT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.user_id = auth.uid()))))",
+    "with_check_expression": null,
+    "policy_definition_text": "CREATE POLICY \"view order items via own orders\" ON public.order_items FOR SELECT TO PUBLIC USING ((EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND (o.user_id = auth.uid())))))"
+  }
+]

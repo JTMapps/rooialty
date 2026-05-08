@@ -1,0 +1,3 @@
+TABLE: mv_daily_consumption
+
+COLUMNS:

@@ -28,17 +28,15 @@ export default function Login() {
       .maybeSingle();
 
     // Clerks home is /counter (walk-in panel), users home is /menu
-    if (profile?.role === "clerk") {
-      navigate("/counter", { replace: true });
-    } else {
-      navigate("/menu", { replace: true });
-    }
-  };
+    if (profile?.role === "clerk")  { navigate("/counter", { replace: true }); return; }
+    if (profile?.role === "office") { navigate("/office",  { replace: true }); return; }
+    navigate("/menu", { replace: true });
+      };
 
-  const inputStyle = (field) => ({
-    ...input.base,
-    ...(focused === field ? input.focused : {}),
-  });
+    const inputStyle = (field) => ({
+      ...input.base,
+      ...(focused === field ? input.focused : {}),
+    });
 
   return (
     <div style={layout.centered}>

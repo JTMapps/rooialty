@@ -1,0 +1,248 @@
+[
+  {
+    "schema_name": "public",
+    "enum_type": "cart_status",
+    "enum_label": "active",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "cart_status",
+    "enum_label": "checked_out",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "cart_status",
+    "enum_label": "abandoned",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "cart_status",
+    "enum_label": "locked",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "delivery_type",
+    "enum_label": "collect",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "delivery_type",
+    "enum_label": "call",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "URBAN KOTAS",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "ROOIALTY MEALS",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "TO SHARE",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "WINGS",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "WING BAR",
+    "enum_sort_order": 5
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_categories",
+    "enum_label": "COLD SERVES",
+    "enum_sort_order": 6
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_type",
+    "enum_label": "food",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "item_type",
+    "enum_label": "drink",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "purchase",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "order_consumption",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "cancellation_reversal",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "manual_adjustment",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "wastage",
+    "enum_sort_order": 5
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "spoilage",
+    "enum_sort_order": 6
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "transfer_out",
+    "enum_sort_order": 7
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "transfer_in",
+    "enum_sort_order": 8
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "movement_reason",
+    "enum_label": "opening_stock",
+    "enum_sort_order": 9
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "order_status",
+    "enum_label": "pending",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "order_status",
+    "enum_label": "confirmed",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "order_status",
+    "enum_label": "ready",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "order_status",
+    "enum_label": "completed",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "order_status",
+    "enum_label": "cancelled",
+    "enum_sort_order": 5
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "reconciliation_status",
+    "enum_label": "draft",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "reconciliation_status",
+    "enum_label": "submitted",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "reconciliation_status",
+    "enum_label": "approved",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "reconciliation_status",
+    "enum_label": "applied",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "g",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "kg",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "ml",
+    "enum_sort_order": 3
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "l",
+    "enum_sort_order": 4
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "unit",
+    "enum_sort_order": 5
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "unit_of_measure",
+    "enum_label": "portion",
+    "enum_sort_order": 6
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "user_role",
+    "enum_label": "user",
+    "enum_sort_order": 1
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "user_role",
+    "enum_label": "clerk",
+    "enum_sort_order": 2
+  },
+  {
+    "schema_name": "public",
+    "enum_type": "user_role",
+    "enum_label": "office",
+    "enum_sort_order": 3
+  }
+]

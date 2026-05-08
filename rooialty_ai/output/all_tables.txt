@@ -1,0 +1,389 @@
+TABLE: availability
+
+COLUMNS:
+- available_from (timestamp with time zone)
+- available_to (timestamp with time zone)
+- clerk_id (uuid)
+- created_at (timestamp with time zone)
+- delivery_types (delivery_type[])
+- id (uuid)
+- note (text)
+
+CONSTRAINTS:
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+- CHECK (available_to > available_from)
+
+RELATIONSHIPS:
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+BUSINESS RULES:
+- CHECK (available_to > available_from)
+
+================================================================================
+
+TABLE: cart_items
+
+COLUMNS:
+- cart_id (uuid)
+- created_at (timestamp with time zone)
+- id (uuid)
+- item_id (uuid)
+- quantity (integer)
+
+CONSTRAINTS:
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE
+- FOREIGN KEY (item_id) REFERENCES items(id)
+- PRIMARY KEY (id)
+- CHECK (quantity > 0)
+
+RELATIONSHIPS:
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE
+- FOREIGN KEY (item_id) REFERENCES items(id)
+
+BUSINESS RULES:
+- CHECK (quantity > 0)
+
+================================================================================
+
+TABLE: carts
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- delivery_address (text)
+- delivery_type (delivery_type (collect | call))
+- id (uuid)
+- payment_option (text)
+- scheduled_for (timestamp with time zone)
+- status (cart_status (active | checked_out | abandoned | locked))
+- updated_at (timestamp with time zone)
+- user_id (uuid)
+
+CONSTRAINTS:
+- PRIMARY KEY (id)
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+RELATIONSHIPS:
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+================================================================================
+
+TABLE: ingredient_stock_cache
+
+COLUMNS:
+- current_stock (numeric(10,4))
+- ingredient_id (uuid)
+- last_updated_at (timestamp with time zone)
+
+CONSTRAINTS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+- PRIMARY KEY (ingredient_id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+
+================================================================================
+
+TABLE: ingredients
+
+COLUMNS:
+- cost_per_unit (numeric(10,4))
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- description (text)
+- id (uuid)
+- name (text)
+- reorder_level (numeric(10,3))
+- reorder_quantity (numeric(10,3))
+- supplier_note (text)
+- unit (unit_of_measure (g | kg | ml | l | unit | portion))
+- updated_at (timestamp with time zone)
+
+CONSTRAINTS:
+- PRIMARY KEY (id)
+- CHECK (reorder_level >= 0::numeric)
+- CHECK (reorder_quantity > 0::numeric)
+
+BUSINESS RULES:
+- CHECK (reorder_level >= 0::numeric)
+- CHECK (reorder_quantity > 0::numeric)
+
+================================================================================
+
+TABLE: inventory_movements
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- delta (numeric(10,4))
+- id (uuid)
+- ingredient_id (uuid)
+- note (text)
+- order_id (uuid)
+- order_item_id (uuid)
+- performed_by (uuid)
+- reason (movement_reason (purchase | order_consumption | cancellation_reversal | manual_adjustment | wastage | spoilage | transfer_out | transfer_in | opening_stock))
+- unit_cost_at_time (numeric(10,4))
+
+CONSTRAINTS:
+- CHECK (unit_cost_at_time IS NULL OR unit_cost_at_time >= 0::numeric)
+- CHECK (delta <> 0::numeric)
+- CHECK ((reason <> ALL (ARRAY['order_consumption'::movement_reason, 'cancellation_reversal'::movement_reason])) OR order_id IS NOT NULL)
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+- FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL
+- FOREIGN KEY (performed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+- FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL
+- FOREIGN KEY (performed_by) REFERENCES profiles(id) ON DELETE SET NULL
+
+BUSINESS RULES:
+- CHECK (unit_cost_at_time IS NULL OR unit_cost_at_time >= 0::numeric)
+- CHECK (delta <> 0::numeric)
+- CHECK ((reason <> ALL (ARRAY['order_consumption'::movement_reason, 'cancellation_reversal'::movement_reason])) OR order_id IS NOT NULL)
+
+================================================================================
+
+TABLE: item_ingredients
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- id (uuid)
+- ingredient_id (uuid)
+- item_id (uuid)
+- quantity_required (numeric(10,4))
+- updated_at (timestamp with time zone)
+
+CONSTRAINTS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+- PRIMARY KEY (id)
+- CHECK (quantity_required > 0::numeric)
+- UNIQUE (item_id, ingredient_id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+
+BUSINESS RULES:
+- CHECK (quantity_required > 0::numeric)
+
+================================================================================
+
+TABLE: items
+
+COLUMNS:
+- category (item_categories (URBAN KOTAS | ROOIALTY MEALS | TO SHARE | WINGS | WING BAR | COLD SERVES))
+- deleted_at (timestamp with time zone)
+- id (uuid)
+- in_stock (boolean)
+- item_type (item_type (food | drink))
+- name (text)
+- price (numeric)
+
+CONSTRAINTS:
+- PRIMARY KEY (id)
+- CHECK (price >= 0::numeric)
+
+BUSINESS RULES:
+- CHECK (price >= 0::numeric)
+
+================================================================================
+
+TABLE: messages
+
+COLUMNS:
+- body (text)
+- clerk_id (uuid)
+- created_at (timestamp with time zone)
+- id (uuid)
+- is_read (boolean)
+- recipient_id (uuid)
+- sender_id (uuid)
+
+CONSTRAINTS:
+- CHECK (TRIM(BOTH FROM body) <> ''::text)
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (recipient_id) REFERENCES profiles(id) ON DELETE CASCADE
+- FOREIGN KEY (sender_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+RELATIONSHIPS:
+- FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (recipient_id) REFERENCES profiles(id) ON DELETE CASCADE
+- FOREIGN KEY (sender_id) REFERENCES profiles(id) ON DELETE CASCADE
+
+BUSINESS RULES:
+- CHECK (TRIM(BOTH FROM body) <> ''::text)
+
+================================================================================
+
+TABLE: order_items
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- id (uuid)
+- item_id (uuid)
+- order_id (uuid)
+- quantity (integer)
+- unit_price_at_order (numeric(10,2))
+
+CONSTRAINTS:
+- FOREIGN KEY (item_id) REFERENCES items(id)
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+- CHECK (quantity > 0)
+
+RELATIONSHIPS:
+- FOREIGN KEY (item_id) REFERENCES items(id)
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+
+BUSINESS RULES:
+- CHECK (quantity > 0)
+
+================================================================================
+
+TABLE: order_status_log
+
+COLUMNS:
+- changed_at (timestamp with time zone)
+- changed_by (uuid)
+- from_status (order_status (pending | confirmed | ready | completed | cancelled))
+- id (uuid)
+- note (text)
+- order_id (uuid)
+- to_status (order_status (pending | confirmed | ready | completed | cancelled))
+
+CONSTRAINTS:
+- FOREIGN KEY (changed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (changed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+
+================================================================================
+
+TABLE: orders
+
+COLUMNS:
+- cancel_reason (text)
+- cancelled_at (timestamp with time zone)
+- cart_id (uuid)
+- completed_at (timestamp with time zone)
+- confirmed_at (timestamp with time zone)
+- confirmed_by (uuid)
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- delivery_address (text)
+- delivery_type (delivery_type (collect | call))
+- eta (timestamp with time zone)
+- id (uuid)
+- is_walkin (boolean)
+- status (order_status (pending | confirmed | ready | completed | cancelled))
+- total_price (numeric(10,2))
+- user_id (uuid)
+- walkin_label (text)
+
+CONSTRAINTS:
+- CHECK (delivery_type <> 'call'::delivery_type OR delivery_address IS NOT NULL AND TRIM(BOTH FROM delivery_address) <> ''::text)
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL
+- FOREIGN KEY (confirmed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE RESTRICT
+
+RELATIONSHIPS:
+- FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE SET NULL
+- FOREIGN KEY (confirmed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE RESTRICT
+
+BUSINESS RULES:
+- CHECK (delivery_type <> 'call'::delivery_type OR delivery_address IS NOT NULL AND TRIM(BOTH FROM delivery_address) <> ''::text)
+
+================================================================================
+
+TABLE: profiles
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- email (text)
+- id (uuid)
+- is_active (boolean)
+- last_seen_at (timestamp with time zone)
+- phone (text)
+- role (user_role (user | clerk | office))
+- username (text)
+
+CONSTRAINTS:
+- UNIQUE (email)
+- FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+- UNIQUE (username)
+
+RELATIONSHIPS:
+- FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+
+================================================================================
+
+TABLE: stock_reconciliation_lines
+
+COLUMNS:
+- counted_stock (numeric(10,4))
+- delta (numeric(10,4))
+- id (uuid)
+- ingredient_id (uuid)
+- movement_id (uuid)
+- reconciliation_id (uuid)
+- system_stock_at_count (numeric(10,4))
+
+CONSTRAINTS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (movement_id) REFERENCES inventory_movements(id) ON DELETE SET NULL
+- PRIMARY KEY (id)
+- FOREIGN KEY (reconciliation_id) REFERENCES stock_reconciliations(id) ON DELETE CASCADE
+- UNIQUE (reconciliation_id, ingredient_id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+- FOREIGN KEY (movement_id) REFERENCES inventory_movements(id) ON DELETE SET NULL
+- FOREIGN KEY (reconciliation_id) REFERENCES stock_reconciliations(id) ON DELETE CASCADE
+
+================================================================================
+
+TABLE: stock_reconciliations
+
+COLUMNS:
+- applied_at (timestamp with time zone)
+- approved_at (timestamp with time zone)
+- approved_by (uuid)
+- conducted_at (timestamp with time zone)
+- conducted_by (uuid)
+- created_at (timestamp with time zone)
+- id (uuid)
+- note (text)
+- status (reconciliation_status (draft | submitted | approved | applied))
+
+CONSTRAINTS:
+- FOREIGN KEY (approved_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (conducted_by) REFERENCES profiles(id) ON DELETE RESTRICT
+- PRIMARY KEY (id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (approved_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (conducted_by) REFERENCES profiles(id) ON DELETE RESTRICT
+
+================================================================================
+
+TABLE: mv_daily_consumption
+
+COLUMNS:
+
+================================================================================
+

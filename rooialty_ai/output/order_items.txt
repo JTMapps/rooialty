@@ -1,0 +1,23 @@
+TABLE: order_items
+
+COLUMNS:
+- created_at (timestamp with time zone)
+- deleted_at (timestamp with time zone)
+- id (uuid)
+- item_id (uuid)
+- order_id (uuid)
+- quantity (integer)
+- unit_price_at_order (numeric(10,2))
+
+CONSTRAINTS:
+- FOREIGN KEY (item_id) REFERENCES items(id)
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+- CHECK (quantity > 0)
+
+RELATIONSHIPS:
+- FOREIGN KEY (item_id) REFERENCES items(id)
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+
+BUSINESS RULES:
+- CHECK (quantity > 0)

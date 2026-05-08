@@ -1,0 +1,188 @@
+[
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "index_name": "availability_pkey",
+    "index_definition": "CREATE UNIQUE INDEX availability_pkey ON public.availability USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "index_name": "cart_items_pkey",
+    "index_definition": "CREATE UNIQUE INDEX cart_items_pkey ON public.cart_items USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "index_name": "carts_pkey",
+    "index_definition": "CREATE UNIQUE INDEX carts_pkey ON public.carts USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredient_stock_cache",
+    "index_name": "ingredient_stock_cache_pkey",
+    "index_definition": "CREATE UNIQUE INDEX ingredient_stock_cache_pkey ON public.ingredient_stock_cache USING btree (ingredient_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "index_name": "ingredients_pkey",
+    "index_definition": "CREATE UNIQUE INDEX ingredients_pkey ON public.ingredients USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "index_name": "idx_inventory_movements_ingredient",
+    "index_definition": "CREATE INDEX idx_inventory_movements_ingredient ON public.inventory_movements USING btree (ingredient_id, created_at DESC)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "index_name": "idx_inventory_movements_order",
+    "index_definition": "CREATE INDEX idx_inventory_movements_order ON public.inventory_movements USING btree (order_id) WHERE (order_id IS NOT NULL)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "index_name": "inventory_movements_pkey",
+    "index_definition": "CREATE UNIQUE INDEX inventory_movements_pkey ON public.inventory_movements USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "index_name": "idx_item_ingredients_ingredient",
+    "index_definition": "CREATE INDEX idx_item_ingredients_ingredient ON public.item_ingredients USING btree (ingredient_id) WHERE (deleted_at IS NULL)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "index_name": "idx_item_ingredients_item",
+    "index_definition": "CREATE INDEX idx_item_ingredients_item ON public.item_ingredients USING btree (item_id) WHERE (deleted_at IS NULL)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "index_name": "item_ingredients_pkey",
+    "index_definition": "CREATE UNIQUE INDEX item_ingredients_pkey ON public.item_ingredients USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "index_name": "uq_item_ingredient",
+    "index_definition": "CREATE UNIQUE INDEX uq_item_ingredient ON public.item_ingredients USING btree (item_id, ingredient_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "index_name": "uq_item_ingredient_active",
+    "index_definition": "CREATE UNIQUE INDEX uq_item_ingredient_active ON public.item_ingredients USING btree (item_id, ingredient_id) WHERE (deleted_at IS NULL)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "index_name": "items_pkey",
+    "index_definition": "CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "index_name": "idx_messages_recipient",
+    "index_definition": "CREATE INDEX idx_messages_recipient ON public.messages USING btree (recipient_id, created_at DESC)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "index_name": "idx_messages_sender",
+    "index_definition": "CREATE INDEX idx_messages_sender ON public.messages USING btree (sender_id, created_at DESC)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "index_name": "messages_pkey",
+    "index_definition": "CREATE UNIQUE INDEX messages_pkey ON public.messages USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "mv_daily_consumption",
+    "index_name": "mv_daily_consumption_ingredient_id_consumption_date_idx",
+    "index_definition": "CREATE UNIQUE INDEX mv_daily_consumption_ingredient_id_consumption_date_idx ON public.mv_daily_consumption USING btree (ingredient_id, consumption_date)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "index_name": "idx_order_items_order_id",
+    "index_definition": "CREATE INDEX idx_order_items_order_id ON public.order_items USING btree (order_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "index_name": "order_items_pkey",
+    "index_definition": "CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "index_name": "idx_order_status_log_order_id",
+    "index_definition": "CREATE INDEX idx_order_status_log_order_id ON public.order_status_log USING btree (order_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "index_name": "idx_order_status_log_to_status",
+    "index_definition": "CREATE INDEX idx_order_status_log_to_status ON public.order_status_log USING btree (to_status)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "index_name": "order_status_log_pkey",
+    "index_definition": "CREATE UNIQUE INDEX order_status_log_pkey ON public.order_status_log USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "index_name": "one_active_order_per_user",
+    "index_definition": "CREATE UNIQUE INDEX one_active_order_per_user ON public.orders USING btree (user_id) WHERE ((status = ANY (ARRAY['pending'::order_status, 'confirmed'::order_status, 'ready'::order_status])) AND (is_walkin = false))"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "index_name": "orders_pkey",
+    "index_definition": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "index_name": "profiles_email_key",
+    "index_definition": "CREATE UNIQUE INDEX profiles_email_key ON public.profiles USING btree (email)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "index_name": "profiles_pkey",
+    "index_definition": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "index_name": "profiles_username_key",
+    "index_definition": "CREATE UNIQUE INDEX profiles_username_key ON public.profiles USING btree (username)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "index_name": "stock_reconciliation_lines_pkey",
+    "index_definition": "CREATE UNIQUE INDEX stock_reconciliation_lines_pkey ON public.stock_reconciliation_lines USING btree (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "index_name": "uq_reconciliation_ingredient",
+    "index_definition": "CREATE UNIQUE INDEX uq_reconciliation_ingredient ON public.stock_reconciliation_lines USING btree (reconciliation_id, ingredient_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "index_name": "stock_reconciliations_pkey",
+    "index_definition": "CREATE UNIQUE INDEX stock_reconciliations_pkey ON public.stock_reconciliations USING btree (id)"
+  }
+]

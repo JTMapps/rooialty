@@ -1,0 +1,56 @@
+[
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "trigger_name": "trg_ingredients_updated_at",
+    "trigger_definition": "CREATE TRIGGER trg_ingredients_updated_at BEFORE UPDATE ON ingredients FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "trigger_name": "trg_lock_movement_row",
+    "trigger_definition": "CREATE TRIGGER trg_lock_movement_row BEFORE DELETE OR UPDATE ON inventory_movements FOR EACH ROW EXECUTE FUNCTION fn_lock_movement_row()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "trigger_name": "trg_update_stock_cache",
+    "trigger_definition": "CREATE TRIGGER trg_update_stock_cache AFTER INSERT ON inventory_movements FOR EACH ROW EXECUTE FUNCTION fn_update_stock_cache()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "trigger_name": "trg_item_ingredients_updated_at",
+    "trigger_definition": "CREATE TRIGGER trg_item_ingredients_updated_at BEFORE UPDATE ON item_ingredients FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "trigger_name": "trg_populate_order_item_price",
+    "trigger_definition": "CREATE TRIGGER trg_populate_order_item_price BEFORE INSERT ON order_items FOR EACH ROW EXECUTE FUNCTION populate_order_item_price()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "trigger_name": "trg_deduct_stock_on_confirmation",
+    "trigger_definition": "CREATE TRIGGER trg_deduct_stock_on_confirmation AFTER INSERT ON order_status_log FOR EACH ROW EXECUTE FUNCTION fn_deduct_stock_on_confirmation()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "trigger_name": "trg_reverse_stock_on_cancellation",
+    "trigger_definition": "CREATE TRIGGER trg_reverse_stock_on_cancellation AFTER INSERT ON order_status_log FOR EACH ROW EXECUTE FUNCTION fn_reverse_stock_on_cancellation()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "trigger_name": "guard_order_placement_trigger",
+    "trigger_definition": "CREATE TRIGGER guard_order_placement_trigger BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION guard_order_placement()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "trigger_name": "trg_ensure_cart_checked_out",
+    "trigger_definition": "CREATE TRIGGER trg_ensure_cart_checked_out BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION ensure_cart_checked_out()"
+  }
+]

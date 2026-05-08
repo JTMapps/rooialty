@@ -1,0 +1,19 @@
+TABLE: order_status_log
+
+COLUMNS:
+- changed_at (timestamp with time zone)
+- changed_by (uuid)
+- from_status (order_status (pending | confirmed | ready | completed | cancelled))
+- id (uuid)
+- note (text)
+- order_id (uuid)
+- to_status (order_status (pending | confirmed | ready | completed | cancelled))
+
+CONSTRAINTS:
+- FOREIGN KEY (changed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+- PRIMARY KEY (id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (changed_by) REFERENCES profiles(id) ON DELETE SET NULL
+- FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE

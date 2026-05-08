@@ -1,0 +1,13 @@
+TABLE: ingredient_stock_cache
+
+COLUMNS:
+- current_stock (numeric(10,4))
+- ingredient_id (uuid)
+- last_updated_at (timestamp with time zone)
+
+CONSTRAINTS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+- PRIMARY KEY (ingredient_id)
+
+RELATIONSHIPS:
+- FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
