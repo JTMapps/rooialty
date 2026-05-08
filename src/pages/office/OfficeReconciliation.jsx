@@ -1,7 +1,10 @@
 // src/pages/office/OfficeReconciliation.jsx
 // Full stock reconciliation workflow: draft → submitted → approved → applied
+// FIXED: delta is a GENERATED ALWAYS column — never written, only read from DB
+// FIXED: null-safety on ingredient, activeRecon, and line lookups
+// FIXED: debounced per-ingredient saves to prevent race conditions
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import useAuth from "../../hooks/useAuth";
 import { btn, text } from "../../styles/components";
@@ -37,19 +40,27 @@ function StatusBadge({ status }) {
 export default function OfficeReconciliation() {
   const { user } = useAuth();
 
-  const [view,          setView]          = useState("list");   // "list" | "count" | "review" | "applied"
+  const [view,            setView]            = useState("list");
   const [reconciliations, setReconciliations] = useState([]);
-  const [activeRecon,   setActiveRecon]   = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [creating,      setCreating]      = useState(false);
-  const [applying,      setApplying]      = useState(false);
-  const [error,         setError]         = useState("");
+  const [activeRecon,     setActiveRecon]     = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [creating,        setCreating]        = useState(false);
+  const [applying,        setApplying]        = useState(false);
+  const [error,           setError]           = useState("");
 
   // Count entry state
-  const [ingredients,   setIngredients]   = useState([]);
-  const [lines,         setLines]         = useState({});       // { ingredient_id: { counted, lineId } }
-  const [savingLines,   setSavingLines]   = useState({});
+  const [ingredients, setIngredients] = useState([]);
+  // lines: { [ingredientId]: { counted, lineId, systemStockAtCount, delta, ingredient } }
+  const [lines,       setLines]       = useState({});
+  // savingLines: { [ingredientId]: "pending" | "saving" | "saved" | null }
+  const [savingLines, setSavingLines] = useState({});
 
+  // Debounce timers: { [ingredientId]: timeoutId }
+  const debounceTimers = useRef({});
+  // In-flight guard: { [ingredientId]: boolean }
+  const inFlight = useRef({});
+
+  // ── Load reconciliations list ─────────────────────────────────────────────
   const loadReconciliations = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
@@ -67,8 +78,38 @@ export default function OfficeReconciliation() {
 
   useEffect(() => { loadReconciliations(); }, [loadReconciliations]);
 
+  // ── Reload lines from DB (needed after writes — delta is computed) ─────────
+  const reloadLines = useCallback(async (reconId) => {
+    if (!reconId) return;
+    const { data } = await supabase
+      .from("stock_reconciliation_lines")
+      .select(`
+        id, ingredient_id, system_stock_at_count, counted_stock, delta,
+        ingredient:ingredients(id, name, unit)
+      `)
+      .eq("reconciliation_id", reconId);
+
+    if (!data) return;
+
+    setLines((prev) => {
+      const next = { ...prev };
+      data.forEach((l) => {
+        next[l.ingredient_id] = {
+          lineId:             l.id,
+          systemStockAtCount: l.system_stock_at_count,
+          // Preserve the user's live input value if they're still typing
+          counted: prev[l.ingredient_id]?.counted ?? (l.counted_stock != null ? String(l.counted_stock) : ""),
+          delta:              l.delta,          // ✅ always from DB
+          ingredient:         l.ingredient,
+        };
+      });
+      return next;
+    });
+  }, []);
+
   // ── Create new reconciliation ─────────────────────────────────────────────
   const handleCreate = async () => {
+    if (!user?.id) return;
     setCreating(true);
     setError("");
 
@@ -86,114 +127,209 @@ export default function OfficeReconciliation() {
 
   // ── Open count entry for a draft recon ────────────────────────────────────
   const openCountEntry = async (recon) => {
+    if (!recon?.id) return;
     setActiveRecon(recon);
 
-    // Load all active ingredients + cache stock
-    const { data: ings } = await supabase
-      .from("ingredients")
-      .select("id, name, unit, ingredient_stock_cache(current_stock)")
-      .is("deleted_at", null)
-      .order("name");
+    const [ingsRes, linesRes] = await Promise.all([
+      supabase.from("ingredients")
+        .select("id, name, unit, ingredient_stock_cache(current_stock)")
+        .is("deleted_at", null)
+        .order("name"),
+      supabase.from("stock_reconciliation_lines")
+        .select("id, ingredient_id, system_stock_at_count, counted_stock, delta, ingredient:ingredients(id, name, unit)")
+        .eq("reconciliation_id", recon.id),
+    ]);
 
-    setIngredients(ings || []);
-
-    // Load existing lines for this recon
-    const { data: existingLines } = await supabase
-      .from("stock_reconciliation_lines")
-      .select("id, ingredient_id, system_stock_at_count, counted_stock")
-      .eq("reconciliation_id", recon.id);
+    setIngredients(ingsRes.data || []);
 
     const lineMap = {};
-    (existingLines || []).forEach((l) => {
+    (linesRes.data || []).forEach((l) => {
       lineMap[l.ingredient_id] = {
-        lineId:              l.id,
-        systemStockAtCount:  l.system_stock_at_count,
-        counted:             l.counted_stock != null ? String(l.counted_stock) : "",
+        lineId:             l.id,
+        systemStockAtCount: l.system_stock_at_count,
+        counted:            l.counted_stock != null ? String(l.counted_stock) : "",
+        delta:              l.delta,      // ✅ from DB
+        ingredient:         l.ingredient,
       };
     });
-
     setLines(lineMap);
+    setSavingLines({});
     setView("count");
   };
 
-  // ── Save a single count line ──────────────────────────────────────────────
-  const saveLine = async (ingredientId, countedValue, systemStock) => {
-    if (countedValue === "" || countedValue === null) return;
-    setSavingLines((prev) => ({ ...prev, [ingredientId]: true }));
+  // ── Persist a single line to Supabase (no delta write) ───────────────────
+  // Called by the debounce mechanism — never directly from onChange/onBlur
+  const persistLine = useCallback(async (ingredientId, countedValue, systemStock) => {
+    if (!activeRecon?.id) return;
+    if (inFlight.current[ingredientId]) return;  // prevent duplicate in-flight writes
 
     const counted = parseFloat(countedValue);
     const system  = parseFloat(systemStock);
+    if (isNaN(counted) || isNaN(system)) return;
+
+    inFlight.current[ingredientId] = true;
+    setSavingLines((prev) => ({ ...prev, [ingredientId]: "saving" }));
 
     const existing = lines[ingredientId];
 
+    let writeError = null;
     if (existing?.lineId) {
-      await supabase
+      // UPDATE — do NOT include delta (generated column)
+      const { error: err } = await supabase
         .from("stock_reconciliation_lines")
         .update({
           counted_stock:        counted,
-          delta:                counted - system,
           system_stock_at_count: system,
         })
         .eq("id", existing.lineId);
+      writeError = err;
     } else {
-      const { data } = await supabase
+      // INSERT — do NOT include delta (generated column)
+      const { data, error: err } = await supabase
         .from("stock_reconciliation_lines")
         .insert({
           reconciliation_id:    activeRecon.id,
           ingredient_id:        ingredientId,
           system_stock_at_count: system,
           counted_stock:        counted,
-          delta:                counted - system,
+          // ✅ delta is OMITTED — DB computes it
         })
         .select("id")
         .single();
-
-      setLines((prev) => ({
-        ...prev,
-        [ingredientId]: { ...prev[ingredientId], lineId: data?.id },
-      }));
+      writeError = err;
+      if (!err && data?.id) {
+        setLines((prev) => ({
+          ...prev,
+          [ingredientId]: { ...(prev[ingredientId] ?? {}), lineId: data.id },
+        }));
+      }
     }
 
-    setSavingLines((prev) => ({ ...prev, [ingredientId]: false }));
-  };
+    inFlight.current[ingredientId] = false;
 
-  const handleCountChange = (ingredientId, value) => {
+    if (writeError) {
+      setSavingLines((prev) => ({ ...prev, [ingredientId]: null }));
+      setError(writeError.message);
+      return;
+    }
+
+    // Reload lines so delta is refreshed from DB
+    await reloadLines(activeRecon.id);
+    setSavingLines((prev) => ({ ...prev, [ingredientId]: "saved" }));
+
+    // Clear "saved" indicator after 1.5s
+    setTimeout(() => {
+      setSavingLines((prev) => {
+        if (prev[ingredientId] === "saved") return { ...prev, [ingredientId]: null };
+        return prev;
+      });
+    }, 1500);
+  }, [activeRecon, lines, reloadLines]);
+
+  // ── Debounced count change ────────────────────────────────────────────────
+  // Immediate: update local state (optimistic UI)
+  // Delayed:   persist to Supabase after user stops typing (500ms)
+  const handleCountChange = useCallback((ingredientId, value, systemStock) => {
+    // Optimistic local update
     setLines((prev) => ({
       ...prev,
       [ingredientId]: { ...(prev[ingredientId] ?? {}), counted: value },
     }));
-  };
+
+    if (value === "") return;  // don't save empty
+
+    // Mark as pending
+    setSavingLines((prev) => ({ ...prev, [ingredientId]: "pending" }));
+
+    // Clear existing timer for this ingredient
+    if (debounceTimers.current[ingredientId]) {
+      clearTimeout(debounceTimers.current[ingredientId]);
+    }
+
+    // Schedule save after 500ms of inactivity
+    debounceTimers.current[ingredientId] = setTimeout(() => {
+      persistLine(ingredientId, value, systemStock);
+    }, 500);
+  }, [persistLine]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   const countedCount = Object.values(lines).filter((l) => l.counted !== "" && l.counted != null).length;
   const totalCount   = ingredients.length;
 
   // ── Submit for review ─────────────────────────────────────────────────────
-  const handleSubmitForReview = async () => {
-    if (!window.confirm("Submit this reconciliation for review? You won't be able to edit it until it is returned to draft.")) return;
+ const handleSubmitForReview = async () => {
+  if (!activeRecon?.id) return;
+  if (!window.confirm("Submit this reconciliation for review?...")) return;
 
-    // Save any unsaved lines first
-    for (const ing of ingredients) {
-      const line = lines[ing.id];
-      if (line?.counted !== "" && line?.counted != null) {
-        const sysStock = ing.ingredient_stock_cache?.current_stock ?? 0;
-        await saveLine(ing.id, line.counted, sysStock);
-      }
+  Object.values(debounceTimers.current).forEach(clearTimeout);
+
+  // ✅ Fetch current lines from DB to get accurate lineIds before batch-save
+  const { data: existingLines } = await supabase
+    .from("stock_reconciliation_lines")
+    .select("id, ingredient_id")
+    .eq("reconciliation_id", activeRecon.id);
+
+  const existingLineIds = Object.fromEntries(
+    (existingLines || []).map((l) => [l.ingredient_id, l.id])
+  );
+
+  for (const ing of ingredients) {
+    const line     = lines[ing.id];
+    const sysStock = ing.ingredient_stock_cache?.current_stock ?? 0;
+
+    if (line?.counted === "" || line?.counted == null) continue;
+
+    const counted = parseFloat(line.counted);
+    const system  = parseFloat(sysStock);
+    if (isNaN(counted) || isNaN(system)) continue;
+
+    const existingLineId = existingLineIds[ing.id];
+
+    if (existingLineId) {
+      // UPDATE — row already exists
+      await supabase
+        .from("stock_reconciliation_lines")
+        .update({ counted_stock: counted, system_stock_at_count: system })
+        .eq("id", existingLineId);
+    } else {
+      // INSERT — genuinely new row
+      const { data } = await supabase
+        .from("stock_reconciliation_lines")
+        .insert({
+          reconciliation_id:     activeRecon.id,
+          ingredient_id:         ing.id,
+          counted_stock:         counted,
+          system_stock_at_count: system,
+        })
+        .select("id")
+        .single();
+
+      if (data?.id) existingLineIds[ing.id] = data.id; // guard against duplicates in same loop
     }
+  }
 
-    const { error: err } = await supabase
-      .from("stock_reconciliations")
-      .update({ status: "submitted" })
-      .eq("id", activeRecon.id);
+  // Now submit
+  const { error: err } = await supabase
+    .from("stock_reconciliations")
+    .update({ status: "submitted" })
+    .eq("id", activeRecon.id);
 
-    if (err) { setError(err.message); return; }
+  if (err) { setError(err.message); return; }
 
-    const updated = { ...activeRecon, status: "submitted" };
-    setActiveRecon(updated);
-    await openReview(updated);
-  };
+  const updated = { ...activeRecon, status: "submitted" };
+  setActiveRecon(updated);
+  await openReview(updated);
+};
 
   // ── Open review mode ──────────────────────────────────────────────────────
   const openReview = async (recon) => {
+    if (!recon?.id) return;
     setActiveRecon(recon);
 
     const { data: lineData } = await supabase
@@ -210,8 +346,8 @@ export default function OfficeReconciliation() {
       lineMap[l.ingredient_id] = {
         lineId:             l.id,
         systemStockAtCount: l.system_stock_at_count,
-        counted:            String(l.counted_stock),
-        delta:              l.delta,
+        counted:            l.counted_stock != null ? String(l.counted_stock) : "",
+        delta:              l.delta,      // ✅ from DB
         ingredient:         l.ingredient,
       };
     });
@@ -221,6 +357,7 @@ export default function OfficeReconciliation() {
 
   // ── Approve ───────────────────────────────────────────────────────────────
   const handleApprove = async () => {
+    if (!activeRecon?.id || !user?.id) return;
     if (!window.confirm("Approve this reconciliation? The applied adjustments will be ready to record.")) return;
 
     const { error: err } = await supabase
@@ -238,6 +375,8 @@ export default function OfficeReconciliation() {
 
   // ── Return to draft ───────────────────────────────────────────────────────
   const handleReturnToDraft = async () => {
+    if (!activeRecon?.id) return;
+
     const { error: err } = await supabase
       .from("stock_reconciliations")
       .update({ status: "draft", approved_by: null, approved_at: null })
@@ -252,8 +391,11 @@ export default function OfficeReconciliation() {
 
   // ── Apply adjustments ─────────────────────────────────────────────────────
   const handleApply = async () => {
+    if (!activeRecon?.id || !user?.id) return;
+
+    // Only include lines with a real delta and a valid ingredient id
     const nonZeroLines = Object.values(lines).filter(
-      (l) => l.delta != null && l.delta !== 0
+      (l) => l?.delta != null && l.delta !== 0 && l?.ingredient?.id
     );
 
     if (nonZeroLines.length === 0) {
@@ -270,8 +412,8 @@ export default function OfficeReconciliation() {
     try {
       if (nonZeroLines.length > 0) {
         const movements = nonZeroLines.map((l) => ({
-          ingredient_id: l.ingredient?.id ?? Object.keys(lines).find((k) => lines[k] === l),
-          delta:         l.delta,
+          ingredient_id: l.ingredient.id,   // ✅ guarded above
+          delta:         l.delta,           // ✅ value from DB, not computed here
           reason:        "manual_adjustment",
           performed_by:  user.id,
           note:          `Applied from reconciliation ${activeRecon.id.slice(0, 8)}`,
@@ -284,10 +426,11 @@ export default function OfficeReconciliation() {
 
         if (movErr) throw movErr;
 
-        // Link movement IDs back to lines
+        // Link movement IDs back to reconciliation lines
         for (const move of (created || [])) {
+          if (!move?.ingredient_id) continue;
           const lineEntry = Object.values(lines).find(
-            (l) => (l.ingredient?.id ?? "") === move.ingredient_id
+            (l) => l?.ingredient?.id === move.ingredient_id
           );
           if (lineEntry?.lineId) {
             await supabase
@@ -298,7 +441,7 @@ export default function OfficeReconciliation() {
         }
       }
 
-      // Mark applied
+      // Mark as applied
       const { error: updErr } = await supabase
         .from("stock_reconciliations")
         .update({ status: "applied", applied_at: new Date().toISOString() })
@@ -445,8 +588,8 @@ export default function OfficeReconciliation() {
                       <button
                         style={s.actionBtn}
                         onClick={() => {
-                          if (r.status === "draft")     openCountEntry(r);
-                          else                          openReview(r);
+                          if (r.status === "draft") openCountEntry(r);
+                          else                      openReview(r);
                         }}
                       >
                         {r.status === "draft"     ? "Continue →"  :
@@ -494,8 +637,11 @@ export default function OfficeReconciliation() {
                 const systemStock = ing.ingredient_stock_cache?.current_stock ?? 0;
                 const line        = lines[ing.id] ?? {};
                 const counted     = line.counted ?? "";
-                const delta       = counted !== "" ? parseFloat(counted) - systemStock : null;
-                const isSaving    = savingLines[ing.id] ?? false;
+                // Use DB delta if available, fall back to optimistic calculation
+                const delta       = line.lineId
+                  ? (line.delta ?? null)
+                  : (counted !== "" ? parseFloat(counted) - systemStock : null);
+                const saveState   = savingLines[ing.id];
 
                 return (
                   <tr key={ing.id}>
@@ -515,12 +661,7 @@ export default function OfficeReconciliation() {
                         step="0.001"
                         placeholder="Count…"
                         value={counted}
-                        onChange={(e) => handleCountChange(ing.id, e.target.value)}
-                        onBlur={(e) => {
-                          if (e.target.value !== "") {
-                            saveLine(ing.id, e.target.value, systemStock);
-                          }
-                        }}
+                        onChange={(e) => handleCountChange(ing.id, e.target.value, systemStock)}
                       />
                     </td>
                     <td style={{
@@ -534,8 +675,17 @@ export default function OfficeReconciliation() {
                     }}>
                       {delta == null ? "—"
                        : delta === 0 ? "✓"
-                       : `${delta > 0 ? "+" : ""}${delta.toFixed(3)}`}
-                      {isSaving && <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 6 }}>saving…</span>}
+                       : `${delta > 0 ? "+" : ""}${Number(delta).toFixed(3)}`}
+                      {/* Save state indicator */}
+                      {saveState === "pending" && (
+                        <span style={{ color: "var(--muted)", fontSize: 10, marginLeft: 6 }}>…</span>
+                      )}
+                      {saveState === "saving" && (
+                        <span style={{ color: "var(--muted)", fontSize: 10, marginLeft: 6 }}>saving</span>
+                      )}
+                      {saveState === "saved" && (
+                        <span style={{ color: "#22c55e", fontSize: 10, marginLeft: 6 }}>✓</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -551,18 +701,18 @@ export default function OfficeReconciliation() {
 
           {/* Summary */}
           {(() => {
-            const lineVals = Object.values(lines);
+            const lineVals      = Object.values(lines);
             const discrepancies = lineVals.filter((l) => l.delta != null && l.delta !== 0);
-            const positives     = discrepancies.filter((l) => l.delta > 0);
-            const negatives     = discrepancies.filter((l) => l.delta < 0);
+            const positives     = discrepancies.filter((l) => (l.delta ?? 0) > 0);
+            const negatives     = discrepancies.filter((l) => (l.delta ?? 0) < 0);
             return (
               <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
                 {[
-                  { label: "Total Lines",      val: lineVals.length,        color: "var(--bone)"   },
-                  { label: "Discrepancies",    val: discrepancies.length,   color: "var(--gold)"   },
-                  { label: "Short (−)",        val: negatives.length,       color: "var(--ember)"  },
-                  { label: "Over (+)",         val: positives.length,       color: "#3b82f6"       },
-                  { label: "Perfect Count",    val: lineVals.length - discrepancies.length, color: "#22c55e" },
+                  { label: "Total Lines",   val: lineVals.length,                      color: "var(--bone)"  },
+                  { label: "Discrepancies", val: discrepancies.length,                 color: "var(--gold)"  },
+                  { label: "Short (−)",     val: negatives.length,                     color: "var(--ember)" },
+                  { label: "Over (+)",      val: positives.length,                     color: "#3b82f6"      },
+                  { label: "Perfect Count", val: lineVals.length - discrepancies.length, color: "#22c55e"    },
                 ].map(({ label, val, color }) => (
                   <div key={label} style={{ background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: 3, padding: "12px 16px", minWidth: 100, flex: "1 0 auto" }}>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color, letterSpacing: "0.04em" }}>{val}</div>
@@ -603,7 +753,7 @@ export default function OfficeReconciliation() {
                         color: delta === 0 ? "#22c55e" : delta > 0 ? "#3b82f6" : "var(--ember)",
                         fontWeight: delta !== 0 ? 700 : 400,
                       }}>
-                        {delta === 0 ? "✓" : `${delta > 0 ? "+" : ""}${delta.toFixed(3)}`}
+                        {delta === 0 ? "✓" : `${delta > 0 ? "+" : ""}${Number(delta).toFixed(3)}`}
                       </td>
                     </tr>
                   );
@@ -628,6 +778,7 @@ export default function OfficeReconciliation() {
   );
 }
 
+// ── Styles (unchanged from original) ────────────────────────────────────────
 const s = {
   page: { minHeight: "100%", background: "var(--smoke)", paddingBottom: 60 },
   head: {

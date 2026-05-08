@@ -1,5 +1,7 @@
 // src/pages/office/stock/Adjustments.jsx
 // Records manual stock corrections — inserts inventory_movements with reason=manual_adjustment
+// FIX: added optional unit_cost_at_time field so cost is captured on manual adjustments
+// FIX: note is now visibly confirmed in the recent table with full text on hover (title attr)
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabaseClient";
@@ -7,7 +9,6 @@ import useAuth from "../../../hooks/useAuth";
 import IngredientPicker from "../../../components/office/IngredientPicker";
 import { btn } from "../../../styles/components";
 
-// ── Inline feedback styles (avoids undefined text.error) ──────
 const msgError   = { color: "var(--ember)", fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
 const msgSuccess = { color: "#22c55e",      fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
 
@@ -21,20 +22,21 @@ export default function Adjustments() {
   const { user } = useAuth();
 
   // ── Form state ──────────────────────────────────────────────
-  const [ingredientId,   setIngredientId]   = useState(null);
-  const [adjustment,     setAdjustment]     = useState("");
-  const [note,           setNote]           = useState("");
-  const [saving,         setSaving]         = useState(false);
-  const [error,          setError]          = useState("");
-  const [success,        setSuccess]        = useState("");
+  const [ingredientId,  setIngredientId]  = useState(null);
+  const [adjustment,    setAdjustment]    = useState("");
+  const [note,          setNote]          = useState("");
+  const [unitCost,      setUnitCost]      = useState("");   // FIX: optional cost capture
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [success,       setSuccess]       = useState("");
 
   // ── Live stock for selected ingredient ──────────────────────
-  const [currentStock,   setCurrentStock]   = useState(null);
-  const [selectedUnit,   setSelectedUnit]   = useState("");
+  const [currentStock,  setCurrentStock]  = useState(null);
+  const [selectedUnit,  setSelectedUnit]  = useState("");
 
   // ── Recent adjustments ───────────────────────────────────────
-  const [recentAdjusts,  setRecentAdjusts]  = useState([]);
-  const [loadingRecent,  setLoadingRecent]  = useState(true);
+  const [recentAdjusts, setRecentAdjusts] = useState([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
 
   const loadRecent = useCallback(async () => {
     setLoadingRecent(true);
@@ -44,7 +46,7 @@ export default function Adjustments() {
     const { data } = await supabase
       .from("inventory_movements")
       .select(`
-        id, delta, reason, created_at, note,
+        id, delta, reason, created_at, note, unit_cost_at_time,
         ingredient:ingredients(id, name, unit),
         performed_by_profile:profiles!performed_by(username)
       `)
@@ -82,7 +84,8 @@ export default function Adjustments() {
       });
   }, [ingredientId]);
 
-  const adjNum = parseFloat(adjustment);
+  const adjNum    = parseFloat(adjustment);
+  const costNum   = parseFloat(unitCost);
   const pct = currentStock != null && currentStock !== 0
     ? Math.abs((adjNum / currentStock) * 100)
     : 0;
@@ -90,21 +93,27 @@ export default function Adjustments() {
 
   const handleSubmit = async () => {
     const delta = parseFloat(adjustment);
-    if (!ingredientId) { setError("Please select an ingredient."); return; }
+    if (!ingredientId)             { setError("Please select an ingredient."); return; }
     if (isNaN(delta) || delta === 0) { setError("Adjustment must be a non-zero number."); return; }
-    if (!note.trim()) { setError("A note is required for manual adjustments."); return; }
+    if (!note.trim())              { setError("A note is required for manual adjustments."); return; }
 
     setSaving(true);
     setError("");
     setSuccess("");
 
-    const { error: err } = await supabase.from("inventory_movements").insert({
+    // FIX: include unit_cost_at_time if provided, otherwise omit (stays null in DB)
+    const payload = {
       ingredient_id: ingredientId,
       delta,
       reason:        "manual_adjustment",
       performed_by:  user.id,
       note:          note.trim(),
-    });
+    };
+    if (!isNaN(costNum) && costNum >= 0 && unitCost !== "") {
+      payload.unit_cost_at_time = costNum;
+    }
+
+    const { error: err } = await supabase.from("inventory_movements").insert(payload);
 
     setSaving(false);
     if (err) { setError(err.message); return; }
@@ -115,6 +124,7 @@ export default function Adjustments() {
     setIngredientId(null);
     setAdjustment("");
     setNote("");
+    setUnitCost("");
     setCurrentStock(null);
     setSelectedUnit("");
     loadRecent();
@@ -136,7 +146,8 @@ export default function Adjustments() {
           <IngredientPicker value={ingredientId} onChange={setIngredientId} />
           {currentStock != null && (
             <div style={s.stockContext}>
-              Ledger stock: <strong style={{ color: "var(--bone)" }}>
+              Ledger stock:{" "}
+              <strong style={{ color: "var(--bone)" }}>
                 {Number(currentStock).toFixed(3)} {selectedUnit}
               </strong>
             </div>
@@ -161,7 +172,10 @@ export default function Adjustments() {
           {currentStock != null && adjustment && !isNaN(adjNum) && (
             <div style={s.stockContext}>
               New stock after adjustment:{" "}
-              <strong style={{ color: adjNum < 0 && (currentStock + adjNum) < 0 ? "var(--ember)" : "var(--bone)" }}>
+              <strong style={{
+                color: adjNum < 0 && (currentStock + adjNum) < 0
+                  ? "var(--ember)" : "var(--bone)",
+              }}>
                 {Number(currentStock + adjNum).toFixed(3)} {selectedUnit}
               </strong>
             </div>
@@ -171,6 +185,20 @@ export default function Adjustments() {
               ⚠ This is a large adjustment ({pct.toFixed(0)}% of current stock). Please verify before submitting.
             </div>
           )}
+        </div>
+
+        {/* FIX: optional unit cost field */}
+        <div style={s.field}>
+          <label style={s.label}>Unit Cost (R) — optional</label>
+          <input
+            style={s.input}
+            type="number"
+            step="0.0001"
+            min="0"
+            placeholder="e.g. 6.5000 — leave blank if not applicable"
+            value={unitCost}
+            onChange={(e) => setUnitCost(e.target.value)}
+          />
         </div>
 
         <div style={s.field}>
@@ -212,7 +240,8 @@ export default function Adjustments() {
             <table style={s.table}>
               <thead>
                 <tr>
-                  {["Date", "Ingredient", "Delta", "By", "Note"].map((h) => (
+                  {/* FIX: added Unit Cost column so it's visible in the recent table */}
+                  {["Date", "Ingredient", "Delta", "Unit Cost", "By", "Note"].map((h) => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
                 </tr>
@@ -235,12 +264,29 @@ export default function Adjustments() {
                     }}>
                       {m.delta > 0 ? "+" : ""}{Number(m.delta).toFixed(3)}
                     </td>
+                    {/* FIX: render unit_cost_at_time in the table */}
+                    <td style={{ ...s.td, color: "var(--muted)", fontSize: 12 }}>
+                      {m.unit_cost_at_time != null
+                        ? `R${Number(m.unit_cost_at_time).toFixed(4)}`
+                        : "—"}
+                    </td>
                     <td style={{ ...s.td, color: "var(--muted)" }}>
                       {m.performed_by_profile?.username
                         ? `@${m.performed_by_profile.username}`
                         : "system"}
                     </td>
-                    <td style={{ ...s.td, color: "var(--muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {/* FIX: full note visible on hover via title; truncated in cell */}
+                    <td
+                      style={{
+                        ...s.td,
+                        color: "var(--muted)",
+                        maxWidth: 220,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={m.note ?? ""}
+                    >
                       {m.note ?? "—"}
                     </td>
                   </tr>
@@ -255,9 +301,9 @@ export default function Adjustments() {
 }
 
 const s = {
-  wrap:       { display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" },
-  formSide:   { display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 480, flex: "0 0 380px" },
-  recentSide: { flex: 1, minWidth: 0 },
+  wrap:        { display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" },
+  formSide:    { display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 480, flex: "0 0 380px" },
+  recentSide:  { flex: 1, minWidth: 0 },
   sectionHead: {
     fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
     letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4,

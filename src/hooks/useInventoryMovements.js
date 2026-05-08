@@ -1,6 +1,6 @@
 // src/hooks/useInventoryMovements.js
 // Paginated fetcher for the inventory_movements ledger.
-// Accepts a filters object for server-side filtering.
+// FIX: dateTo now appends T23:59:59 so the full selected day is included.
 
 import { useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -34,8 +34,9 @@ export default function useInventoryMovements(filters = {}) {
     if (filters.reason)        q = q.eq("reason", filters.reason);
     if (filters.orderId)       q = q.eq("order_id", filters.orderId);
     if (filters.performedBy)   q = q.eq("performed_by", filters.performedBy);
-    if (filters.dateFrom)      q = q.gte("created_at", filters.dateFrom);
-    if (filters.dateTo)        q = q.lte("created_at", filters.dateTo);
+    if (filters.dateFrom)      q = q.gte("created_at", `${filters.dateFrom}T00:00:00`);
+    // FIX: include the full selected day by using end-of-day timestamp
+    if (filters.dateTo)        q = q.lte("created_at", `${filters.dateTo}T23:59:59`);
     if (filters.direction === "in")  q = q.gt("delta", 0);
     if (filters.direction === "out") q = q.lt("delta", 0);
 

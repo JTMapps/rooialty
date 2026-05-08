@@ -1,0 +1,58 @@
+========================================================================
+ROOIALTY RAG PIPELINE — CLAUDE CONTEXT SUMMARY
+Generated: 2026-05-08T11:01:22Z
+========================================================================
+
+── SCAN STATS ──────────────────────────────────────────────────────
+  Files scanned  : 61
+  Use Supabase   : 32
+  DB tables known: 16
+  Tables touched : 15
+
+── PRIMARY BUG: RECIPES PAGE ───────────────────────────────────────
+  Symptom: On the Recipes page (OfficeRecipes.jsx) the UI shows 'Select an item to configure its recipe'. When a menu item is selected, NO ingredients appear below it. The user expects to see ingredients they can add to that item's recipe.
+
+  Gap detected   : True
+  Gap description: OfficeRecipes.jsx touches tables ['item_ingredients', 'items'] but is MISSING queries to: ['ingredients']. This means item selection cannot load associated ingredients.
+
+  Recommended fix:
+    `item_ingredients` is queried but `ingredients` is not joined.
+    
+    Fix: extend the select to include the ingredients relation:
+      .select('quantity, unit, ingredients(id, name, unit)')
+      .eq('item_id', selectedItem.id)
+
+── RECIPES TABLE COVERAGE ──────────────────────────────────────────
+  ingredients                    ✅
+    → src/hooks/useIngredients.js
+    → src/hooks/useReconciliations.js
+    → src/components/office/IngredientPicker.jsx
+    → src/components/office/OfficeLayout.jsx
+    → src/pages/office/OfficeDashboard.jsx
+    → src/pages/office/OfficeIngredients.jsx
+    → src/pages/office/OfficeLedger.jsx
+    → src/pages/office/OfficeReconciliation.jsx
+    → src/pages/office/OfficeReports.jsx
+    → src/pages/office/stock/Adjustments.jsx
+    → src/pages/office/stock/ReceiveStock.jsx
+    → src/pages/office/stock/WastageSpoilage.jsx
+  item_ingredients               ✅
+    → src/pages/office/OfficeMenuItems.jsx
+    → src/pages/office/OfficeRecipes.jsx
+  items                          ✅
+    → src/hooks/useItemAvailability.js
+    → src/hooks/useMenu.js
+    → src/components/WalkinPanel.jsx
+    → src/pages/Menu.jsx
+    → src/pages/office/OfficeMenuItems.jsx
+    → src/pages/office/OfficeRecipes.jsx
+
+── ORPHAN DB TABLES (never queried from frontend) ──────────────────
+  • availability
+  • mv_daily_consumption
+
+── ORPHAN FRONTEND FILES (Supabase with no known table) ────────────
+  • src/lib/supabaseClient.js
+  • src/pages/Register.jsx
+
+Full detail → claude_context.json
