@@ -6,7 +6,11 @@ import { supabase } from "../../../lib/supabaseClient";
 import useAuth from "../../../hooks/useAuth";
 import IngredientPicker from "../../../components/office/IngredientPicker";
 import MovementReasonBadge from "../../../components/office/MovementReasonBadge";
-import { btn, text } from "../../../styles/components";
+import { btn } from "../../../styles/components";
+
+// ── Inline feedback styles ────────────────────────────────────
+const msgError   = { color: "var(--ember)", fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
+const msgSuccess = { color: "#22c55e",      fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
 
 const fmt = (d) =>
   new Date(d).toLocaleString("en-ZA", {
@@ -40,8 +44,8 @@ export default function WastageSpoilage() {
   const [currentStock,  setCurrentStock]  = useState(null);
 
   // ── Monthly summary + history ────────────────────────────────
-  const [history,       setHistory]       = useState([]);
-  const [monthFilter,   setMonthFilter]   = useState(MONTH_OPTIONS[0].value);
+  const [history,        setHistory]        = useState([]);
+  const [monthFilter,    setMonthFilter]    = useState(MONTH_OPTIONS[0].value);
   const [monthlySummary, setMonthlySummary] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -65,18 +69,12 @@ export default function WastageSpoilage() {
 
     setHistory(data || []);
 
-    // Build per-ingredient summary
     const summary = {};
     (data || []).forEach((m) => {
       const key = m.ingredient?.id;
       if (!key) return;
       if (!summary[key]) {
-        summary[key] = {
-          name:     m.ingredient.name,
-          unit:     m.ingredient.unit,
-          wastage:  0,
-          spoilage: 0,
-        };
+        summary[key] = { name: m.ingredient.name, unit: m.ingredient.unit, wastage: 0, spoilage: 0 };
       }
       if (m.reason === "wastage")  summary[key].wastage  += Math.abs(m.delta);
       if (m.reason === "spoilage") summary[key].spoilage += Math.abs(m.delta);
@@ -125,7 +123,7 @@ export default function WastageSpoilage() {
 
     const { error: err } = await supabase.from("inventory_movements").insert({
       ingredient_id: ingredientId,
-      delta:         -qty,          // always negative — it's a loss
+      delta:         -qty,
       reason:        reasonType,
       performed_by:  user.id,
       note:          description.trim(),
@@ -145,7 +143,7 @@ export default function WastageSpoilage() {
     loadHistory();
   };
 
-  const totalLoss = history.reduce((s, m) => s + Math.abs(m.delta), 0);
+  const totalLoss    = history.reduce((s, m) => s + Math.abs(m.delta), 0);
   const wastageLoss  = history.filter((m) => m.reason === "wastage").reduce((s, m) => s + Math.abs(m.delta), 0);
   const spoilageLoss = history.filter((m) => m.reason === "spoilage").reduce((s, m) => s + Math.abs(m.delta), 0);
 
@@ -196,13 +194,10 @@ export default function WastageSpoilage() {
               <button
                 key={val}
                 style={{
-                  flex: 1,
-                  padding: "12px 8px",
-                  background: reasonType === val ? "rgba(220,38,38,0.12)" : "#161616",
-                  border: reasonType === val ? "1px solid var(--ember)" : "1px solid var(--pit)",
-                  borderRadius: 3,
-                  cursor: "pointer",
-                  textAlign: "left",
+                  flex: 1, padding: "12px 8px",
+                  background:  reasonType === val ? "rgba(220,38,38,0.12)" : "#161616",
+                  border:      reasonType === val ? "1px solid var(--ember)" : "1px solid var(--pit)",
+                  borderRadius: 3, cursor: "pointer", textAlign: "left",
                 }}
                 onClick={() => setReasonType(val)}
               >
@@ -231,8 +226,8 @@ export default function WastageSpoilage() {
           />
         </div>
 
-        {error   && <div style={text.error}>{error}</div>}
-        {success && <div style={{ ...text.error, color: "#22c55e" }}>{success}</div>}
+        {error   && <div style={msgError}>{error}</div>}
+        {success && <div style={msgSuccess}>{success}</div>}
 
         <button
           className="btn-primary"
@@ -250,7 +245,6 @@ export default function WastageSpoilage() {
       {/* ── Right: Monthly summary + history ── */}
       <div style={s.recentSide}>
 
-        {/* Month selector */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <div style={s.sectionHead}>Monthly Summary</div>
           <select
@@ -264,13 +258,12 @@ export default function WastageSpoilage() {
           </select>
         </div>
 
-        {/* Summary strip */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           {[
-            { label: "Total Loss",  val: `${totalLoss.toFixed(2)} units`,    color: "var(--ember)" },
-            { label: "Wastage",     val: `${wastageLoss.toFixed(2)} units`,   color: "#dc2626"       },
-            { label: "Spoilage",    val: `${spoilageLoss.toFixed(2)} units`,  color: "#7f1d1d"       },
-            { label: "Incidents",   val: history.length,                      color: "var(--muted)"  },
+            { label: "Total Loss", val: `${totalLoss.toFixed(2)} units`,   color: "var(--ember)" },
+            { label: "Wastage",    val: `${wastageLoss.toFixed(2)} units`, color: "#dc2626"       },
+            { label: "Spoilage",   val: `${spoilageLoss.toFixed(2)} units`,color: "#fca5a5"       },
+            { label: "Incidents",  val: history.length,                    color: "var(--muted)"  },
           ].map(({ label, val, color }) => (
             <div key={label} style={{ background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: 3, padding: "12px 16px", minWidth: 110, flex: "1 0 auto" }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color, letterSpacing: "0.04em" }}>{val}</div>
@@ -279,7 +272,6 @@ export default function WastageSpoilage() {
           ))}
         </div>
 
-        {/* Per-ingredient breakdown */}
         {monthlySummary.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ ...s.sectionHead, marginBottom: 8 }}>By Ingredient</div>
@@ -307,7 +299,6 @@ export default function WastageSpoilage() {
           </div>
         )}
 
-        {/* Full history table */}
         <div style={s.sectionHead}>Incident Log</div>
         {loadingHistory ? (
           <div style={s.empty}>Loading…</div>
@@ -353,100 +344,35 @@ export default function WastageSpoilage() {
 }
 
 const s = {
-  wrap: {
-    display: "flex",
-    gap: 32,
-    flexWrap: "wrap",
-    alignItems: "flex-start",
-  },
-  formSide: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    minWidth: 320,
-    maxWidth: 480,
-    flex: "0 0 380px",
-  },
-  recentSide: {
-    flex: 1,
-    minWidth: 0,
-  },
+  wrap:       { display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" },
+  formSide:   { display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 480, flex: "0 0 380px" },
+  recentSide: { flex: 1, minWidth: 0 },
   sectionHead: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color: "var(--fire)",
-    marginBottom: 4,
+    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
+    letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4,
   },
-  hint: {
-    fontFamily: "var(--font-sans)",
-    fontSize: 12,
-    color: "var(--muted)",
-    lineHeight: 1.5,
-    margin: 0,
-  },
-  stockContext: {
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    color: "var(--muted)",
-    letterSpacing: "0.05em",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
+  hint:         { fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, margin: 0 },
+  stockContext: { fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", letterSpacing: "0.05em" },
+  field:        { display: "flex", flexDirection: "column", gap: 6 },
   label: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
+    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
+    letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--muted)",
   },
   input: {
-    width: "100%",
-    padding: "8px 12px",
-    background: "#161616",
-    border: "1px solid var(--pit)",
-    borderRadius: "3px",
-    color: "var(--bone)",
-    fontFamily: "var(--font-sans)",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
+    width: "100%", padding: "8px 12px", background: "#161616",
+    border: "1px solid var(--pit)", borderRadius: "3px",
+    color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 14,
+    outline: "none", boxSizing: "border-box",
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
+  table:  { width: "100%", borderCollapse: "collapse" },
   th: {
-    fontFamily: "var(--font-body)",
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.25em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
-    padding: "8px 10px",
-    textAlign: "left",
-    borderBottom: "1px solid var(--pit)",
-    whiteSpace: "nowrap",
+    fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700,
+    letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)",
+    padding: "8px 10px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap",
   },
   td: {
-    padding: "9px 10px",
-    borderBottom: "1px solid var(--pit)",
-    fontSize: 13,
-    color: "var(--bone)",
-    fontFamily: "var(--font-sans)",
-    verticalAlign: "middle",
+    padding: "9px 10px", borderBottom: "1px solid var(--pit)",
+    fontSize: 13, color: "var(--bone)", fontFamily: "var(--font-sans)", verticalAlign: "middle",
   },
-  empty: {
-    fontFamily: "var(--font-body)",
-    fontSize: 13,
-    color: "var(--muted)",
-    letterSpacing: "0.08em",
-    marginTop: 12,
-  },
+  empty: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)", letterSpacing: "0.08em", marginTop: 12 },
 };

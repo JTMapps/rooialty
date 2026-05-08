@@ -1,9 +1,12 @@
+// src/pages/Checkout.jsx
 import { useCartContext as useCart } from "../context/CartContext";
 import useAuth from "../hooks/useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { btn, text } from "../styles/components";
+import { page } from "../styles/page";
+import { form } from "../styles/forms";
 
 export default function Checkout() {
   const { user }                   = useAuth();
@@ -60,19 +63,19 @@ export default function Checkout() {
   };
 
   return (
-    <div style={s.page}>
-      <div style={s.inner}>
+    <div style={page.wrapper}>
+      <div style={page.columnWide}>
 
         <div style={s.titleRow}>
-          <div style={s.eyebrow}>Your Order</div>
-          <h1 style={s.title}>Checkout</h1>
-          <div style={s.divider} />
+          <div style={page.eyebrow}>Your Order</div>
+          <h1 style={page.titleHero}>Checkout</h1>
+          <div style={page.divider} />
         </div>
 
         {items.length === 0 ? (
-          <div style={s.empty}>
+          <div style={s.emptyState}>
             <span style={{ fontSize: 40 }}>🛒</span>
-            <p style={s.emptyText}>Your cart is empty</p>
+            <p style={s.emptyLabel}>Your cart is empty</p>
           </div>
         ) : (
           <>
@@ -99,7 +102,7 @@ export default function Checkout() {
               </span>
             </div>
 
-            {error && <p style={{ ...text.error, marginBottom: 12 }}>{error}</p>}
+            {error && <p style={{ ...form.error, marginBottom: 12 }}>{error}</p>}
 
             <button
               className="btn-primary"
@@ -123,52 +126,23 @@ export default function Checkout() {
 }
 
 const s = {
-  page: {
-    minHeight:  "100vh",
-    background: "var(--smoke)",
-  },
-  inner: {
-    maxWidth: 520,
-    margin:   "0 auto",
-    padding:  "40px 16px 80px",
-  },
   titleRow: {
     marginBottom: 32,
   },
-  eyebrow: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      11,
-    fontWeight:    700,
-    letterSpacing: "0.35em",
-    textTransform: "uppercase",
-    color:         "var(--fire)",
-    marginBottom:  6,
-  },
-  title: {
-    fontFamily:    "var(--font-display)",
-    fontSize:      "clamp(40px, 8vw, 64px)",
-    letterSpacing: "0.04em",
-    color:         "var(--bone)",
-    margin:        "0 0 12px",
-    lineHeight:    1,
-  },
-  divider: {
-    width:      48,
-    height:     2,
-    background: "var(--fire)",
-  },
-  empty: {
+  emptyState: {
     display:        "flex",
     flexDirection:  "column",
     alignItems:     "center",
     justifyContent: "center",
+    padding:        "60px 20px",
     gap:            12,
-    padding:        "60px 0",
+    textAlign:      "center",
   },
-  emptyText: {
+  emptyLabel: {
     fontFamily:    "var(--font-body)",
-    fontSize:      16,
-    letterSpacing: "0.1em",
+    fontSize:      14,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
     color:         "var(--muted)",
   },
   itemsList: {

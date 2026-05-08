@@ -1,48 +1,36 @@
 // src/pages/office/OfficeMenuItems.jsx
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { btn } from "../../styles/components";
+import { office } from "../../styles/office";
+import { table } from "../../styles/table";
+import { form } from "../../styles/forms";
 
 const CATEGORIES = ["URBAN KOTAS", "ROOIALTY MEALS", "TO SHARE", "WINGS", "WING BAR", "COLD SERVES"];
 const ITEM_TYPES = ["food", "drink"];
-
-const PAGE = {
-  head: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "28px 24px 20px", borderBottom: "1px solid var(--pit)", flexWrap: "wrap", gap: 16 },
-  eyebrow: { fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4 },
-  title: { fontFamily: "var(--font-display)", fontSize: "clamp(32px, 5vw, 48px)", letterSpacing: "0.04em", color: "var(--bone)", margin: 0, lineHeight: 1 },
-};
-const inp = { width: "100%", padding: "8px 12px", background: "#161616", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", boxSizing: "border-box" };
-const lbl = { fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 4 };
-const th = { fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)", padding: "10px 12px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap", background: "var(--ash)" };
-const td = { padding: "10px 12px", borderBottom: "1px solid var(--pit)", fontSize: 13, color: "var(--bone)", verticalAlign: "middle" };
-
 const EMPTY_FORM = { name: "", category: CATEGORIES[0], item_type: "food", price: "", in_stock: true };
 
 export default function OfficeMenuItems() {
-  const navigate = useNavigate();
-  const [items,       setItems]       = useState([]);
+  const [items,        setItems]        = useState([]);
   const [availability, setAvailability] = useState({});
-  const [loading,     setLoading]     = useState(true);
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [filterCat,   setFilterCat]   = useState("all");
-  const [filterType,  setFilterType]  = useState("all");
-  const [search,      setSearch]      = useState("");
-  const [modal,       setModal]       = useState(null);
-  const [form,        setForm]        = useState(EMPTY_FORM);
-  const [editId,      setEditId]      = useState(null);
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState("");
+  const [loading,      setLoading]      = useState(true);
+  const [showDeleted,  setShowDeleted]  = useState(false);
+  const [filterCat,    setFilterCat]    = useState("all");
+  const [filterType,   setFilterType]   = useState("all");
+  const [search,       setSearch]       = useState("");
+  const [modal,        setModal]        = useState(null);
+  const [formState,    setFormState]    = useState(EMPTY_FORM);
+  const [editId,       setEditId]       = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState("");
 
   const load = useCallback(async () => {
-    const [itemsRes, ingsRes] = await Promise.all([
+    const [itemsRes] = await Promise.all([
       supabase.from("items").select("id, name, category, item_type, price, in_stock, deleted_at").order("name"),
-      supabase.from("ingredients").select("id, reorder_level, ingredient_stock_cache(current_stock), item_ingredients!inner(item_id, quantity_required, deleted_at)").is("deleted_at", null),
     ]);
 
     setItems(itemsRes.data || []);
 
-    // Build simple availability map: does item have BOM?
     const { data: bomData } = await supabase
       .from("item_ingredients")
       .select("item_id, quantity_required, deleted_at, ingredient:ingredients(ingredient_stock_cache(current_stock))")
@@ -52,12 +40,12 @@ export default function OfficeMenuItems() {
     (bomData || []).forEach((line) => {
       if (!avMap[line.item_id]) avMap[line.item_id] = { hasBom: true, servings: [] };
       const stock = line.ingredient?.ingredient_stock_cache?.current_stock ?? 0;
-      const qty = line.quantity_required;
+      const qty   = line.quantity_required;
       avMap[line.item_id].servings.push(qty > 0 ? Math.floor(stock / qty) : 0);
     });
     Object.keys(avMap).forEach((id) => {
-      const s = avMap[id].servings;
-      avMap[id].maxServings = s.length ? Math.min(...s) : 0;
+      const servings = avMap[id].servings;
+      avMap[id].maxServings = servings.length ? Math.min(...servings) : 0;
     });
     setAvailability(avMap);
     setLoading(false);
@@ -74,17 +62,27 @@ export default function OfficeMenuItems() {
     return true;
   });
 
-  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setError(""); setModal("form"); };
+  const openAdd = () => {
+    setFormState(EMPTY_FORM); setEditId(null); setError(""); setModal("form");
+  };
   const openEdit = (item) => {
-    setForm({ name: item.name, category: item.category, item_type: item.item_type, price: item.price, in_stock: item.in_stock });
+    setFormState({ name: item.name, category: item.category, item_type: item.item_type, price: item.price, in_stock: item.in_stock });
     setEditId(item.id); setError(""); setModal("form");
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError("Name is required."); return; }
-    if (form.price === "" || isNaN(Number(form.price)) || Number(form.price) < 0) { setError("Valid price is required."); return; }
+    if (!formState.name.trim()) { setError("Name is required."); return; }
+    if (formState.price === "" || isNaN(Number(formState.price)) || Number(formState.price) < 0) {
+      setError("Valid price is required."); return;
+    }
     setSaving(true); setError("");
-    const payload = { name: form.name.trim(), category: form.category, item_type: form.item_type, price: Number(form.price), in_stock: form.in_stock };
+    const payload = {
+      name:      formState.name.trim(),
+      category:  formState.category,
+      item_type: formState.item_type,
+      price:     Number(formState.price),
+      in_stock:  formState.in_stock,
+    };
     let err;
     if (editId) {
       ({ error: err } = await supabase.from("items").update(payload).eq("id", editId));
@@ -108,94 +106,153 @@ export default function OfficeMenuItems() {
     load();
   };
 
+  const handleToggleStock = async (item) => {
+    await supabase.from("items").update({ in_stock: !item.in_stock }).eq("id", item.id);
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, in_stock: !i.in_stock } : i));
+  };
+
   const getAvailStatus = (item) => {
     const a = availability[item.id];
-    if (!a) return { label: "Untracked", color: "var(--muted)", bg: "rgba(107,114,128,0.15)" };
+    if (!a) return { label: "Untracked", color: "var(--muted)",  bg: "rgba(107,114,128,0.15)" };
     if (a.maxServings > 0) return { label: `${a.maxServings} servings`, color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
     return { label: "OUT", color: "var(--ember)", bg: "rgba(220,38,38,0.15)" };
   };
 
+  const setF = (key, val) => setFormState((prev) => ({ ...prev, [key]: val }));
+
   return (
-    <div style={{ background: "var(--smoke)", minHeight: "100%", paddingBottom: 60 }}>
-      <div style={PAGE.head}>
+    <div style={office.page}>
+
+      {/* ── Header ── */}
+      <div style={office.head}>
         <div>
-          <div style={PAGE.eyebrow}>Menu Management</div>
-          <h1 style={PAGE.title}>Menu Items</h1>
+          <div style={office.eyebrow}>Menu Management</div>
+          <h1 style={office.title}>Menu Items</h1>
         </div>
-        <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>+ Add Item</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            style={{ ...btn.ghost, fontSize: 12 }}
+            onClick={() => setShowDeleted((v) => !v)}
+          >
+            {showDeleted ? "Show Active" : "Show Archived"}
+          </button>
+          {!showDeleted && (
+            <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>
+              + Add Item
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ padding: "14px 24px", background: "var(--ash)", borderBottom: "1px solid var(--pit)", display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <input style={{ ...inp, maxWidth: 220 }} placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select style={{ ...inp, maxWidth: 180 }} value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+      {/* ── Toolbar ── */}
+      <div style={office.toolbar}>
+        <input
+          style={office.toolbarSearch}
+          placeholder="Search items…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          style={office.toolbarSelect}
+          value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}
+        >
           <option value="all">All Categories</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select style={{ ...inp, maxWidth: 130 }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+        <select
+          style={office.toolbarSelect}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
           <option value="all">All Types</option>
-          <option value="food">Food</option>
-          <option value="drink">Drink</option>
+          {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button style={{ background: showDeleted ? "rgba(239,68,68,0.1)" : "transparent", border: `1px solid ${showDeleted ? "var(--ember)" : "var(--pit)"}`, color: showDeleted ? "var(--ember)" : "var(--muted)", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", padding: "6px 14px", borderRadius: 2, cursor: "pointer" }}
-          onClick={() => setShowDeleted(!showDeleted)}>{showDeleted ? "Showing Archived" : "Show Archived"}</button>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>
+          {visible.length} items
+        </span>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto", padding: "0 24px" }}>
+      {/* ── Table ── */}
+      <div style={table.wrapper}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-body)", color: "var(--muted)", letterSpacing: "0.2em" }}>LOADING…</div>
+          <div style={office.loading}>Loading…</div>
         ) : visible.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-body)", color: "var(--muted)", letterSpacing: "0.2em", marginBottom: 16 }}>No items found</div>
-            {!showDeleted && <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>Add your first menu item →</button>}
+          <div style={office.emptyState}>
+            <p style={office.emptyLabel}>No items found.</p>
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={table.table}>
             <thead>
-              <tr>{["Name", "Category", "Type", "Price", "Recipe", "Availability", "In Stock", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>
+                {["Name", "Category", "Type", "Price", "In Stock", "Availability", "Actions"].map((h) => (
+                  <th key={h} style={table.th}>{h}</th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {visible.map((item) => {
                 const avail = getAvailStatus(item);
-                const hasBom = !!availability[item.id];
-                const isArchived = !!item.deleted_at;
                 return (
-                  <tr key={item.id} style={{ opacity: isArchived ? 0.5 : 1, transition: "background 0.1s" }}>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--bone)", letterSpacing: "0.04em", textDecoration: isArchived ? "line-through" : "none" }}>
-                        {item.name}
-                      </span>
+                  <tr key={item.id}>
+                    <td style={{ ...table.td, fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.category}</td>
+                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.item_type}</td>
+                    <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16, color: "var(--gold)" }}>
+                      R{Number(item.price).toFixed(2)}
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 11, color: "var(--muted)", letterSpacing: "0.1em" }}>{item.category}</td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.15em", color: item.item_type === "food" ? "var(--gold)" : "#3b82f6" }}>{item.item_type}</td>
-                    <td style={{ ...td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--gold)", letterSpacing: "0.04em" }}>R{Number(item.price).toFixed(2)}</td>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 2, background: hasBom ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)", color: hasBom ? "#22c55e" : "var(--muted)" }}>
-                        {hasBom ? "Configured" : "No Recipe"}
-                      </span>
+                    <td style={table.td}>
+                      <button
+                        style={{
+                          background:    item.in_stock ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)",
+                          border:        "none",
+                          borderRadius:  2,
+                          color:         item.in_stock ? "#22c55e" : "var(--muted)",
+                          fontFamily:    "var(--font-body)",
+                          fontSize:      10,
+                          fontWeight:    700,
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          padding:       "3px 8px",
+                          cursor:        "pointer",
+                        }}
+                        onClick={() => handleToggleStock(item)}
+                        title="Toggle stock status"
+                      >
+                        {item.in_stock ? "In Stock" : "Out"}
+                      </button>
                     </td>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 2, background: avail.bg, color: avail.color }}>
+                    <td style={table.td}>
+                      <span style={{
+                        background:    avail.bg,
+                        color:         avail.color,
+                        fontFamily:    "var(--font-body)",
+                        fontSize:      10,
+                        fontWeight:    700,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        padding:       "3px 8px",
+                        borderRadius:  2,
+                      }}>
                         {avail.label}
                       </span>
                     </td>
-                    <td style={td}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: item.in_stock ? "var(--fire)" : "var(--pit)", position: "relative", cursor: "pointer", transition: "background 0.2s" }}
-                        onClick={async () => { await supabase.from("items").update({ in_stock: !item.in_stock }).eq("id", item.id); load(); }}>
-                        <div style={{ position: "absolute", width: 14, height: 14, borderRadius: "50%", background: "#fff", top: 2, left: item.in_stock ? 16 : 2, transition: "left 0.2s" }} />
-                      </div>
-                    </td>
-                    <td style={{ ...td, whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {isArchived ? (
-                          <button style={aBtn("var(--fire)")} onClick={() => handleRestore(item)}>Restore</button>
+                    <td style={table.td}>
+                      <div style={table.actions}>
+                        {!item.deleted_at && (
+                          <button style={table.actionBtn} onClick={() => openEdit(item)}>Edit</button>
+                        )}
+                        {!item.deleted_at ? (
+                          <button
+                            style={{ ...table.actionBtn, color: "var(--ember)", borderColor: "var(--ember)" }}
+                            onClick={() => handleArchive(item)}
+                          >
+                            Archive
+                          </button>
                         ) : (
-                          <>
-                            <button style={aBtn("var(--muted)")} onClick={() => openEdit(item)}>Edit</button>
-                            <button style={aBtn("var(--fire)")} onClick={() => navigate("/office/recipes")}>Recipe</button>
-                            <button style={aBtn("var(--ember)")} onClick={() => handleArchive(item)}>Archive</button>
-                          </>
+                          <button style={table.actionBtn} onClick={() => handleRestore(item)}>
+                            Restore
+                          </button>
                         )}
                       </div>
                     </td>
@@ -207,40 +264,53 @@ export default function OfficeMenuItems() {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* ── Add / Edit Modal ── */}
       {modal === "form" && (
-        <div style={overlay} onClick={() => setModal(null)}>
-          <div style={modalBox} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", letterSpacing: "0.04em", marginBottom: 20 }}>
-              {editId ? "Edit Menu Item" : "Add Menu Item"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={lbl}>Item Name *</label><input style={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cheese Kota" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div><label style={lbl}>Category *</label>
-                  <select style={inp} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+        <div style={s.overlay}>
+          <div style={s.modalBox}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", margin: "0 0 20px" }}>
+              {editId ? "Edit Item" : "Add Item"}
+            </h2>
+
+            <div style={form.stack}>
+              <div style={form.field}>
+                <label style={form.label}>Name</label>
+                <input style={form.input} value={formState.name} onChange={(e) => setF("name", e.target.value)} placeholder="Item name" />
+              </div>
+
+              <div style={s.formGrid}>
+                <div style={form.field}>
+                  <label style={form.label}>Category</label>
+                  <select style={form.select} value={formState.category} onChange={(e) => setF("category", e.target.value)}>
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div><label style={lbl}>Type</label>
-                  <select style={inp} value={form.item_type} onChange={(e) => setForm({ ...form, item_type: e.target.value })}>
-                    <option value="food">Food</option>
-                    <option value="drink">Drink</option>
+                <div style={form.field}>
+                  <label style={form.label}>Type</label>
+                  <select style={form.select} value={formState.item_type} onChange={(e) => setF("item_type", e.target.value)}>
+                    {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
-              <div><label style={lbl}>Price (R) *</label><input style={inp} type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="e.g. 45.00" /></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 20, borderRadius: 10, background: form.in_stock ? "var(--fire)" : "var(--pit)", position: "relative", cursor: "pointer", transition: "background 0.2s" }} onClick={() => setForm({ ...form, in_stock: !form.in_stock })}>
-                  <div style={{ position: "absolute", width: 16, height: 16, borderRadius: "50%", background: "#fff", top: 2, left: form.in_stock ? 18 : 2, transition: "left 0.2s" }} />
-                </div>
-                <label style={{ ...lbl, marginBottom: 0 }}>In Stock</label>
+
+              <div style={form.field}>
+                <label style={form.label}>Price (R)</label>
+                <input style={form.input} type="number" min="0" step="0.01" value={formState.price} onChange={(e) => setF("price", e.target.value)} placeholder="0.00" />
               </div>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+                <input type="checkbox" checked={formState.in_stock} onChange={(e) => setF("in_stock", e.target.checked)} />
+                <span style={form.label}>In Stock</span>
+              </label>
             </div>
-            {error && <p style={{ color: "var(--ember)", fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" }}>{error}</p>}
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }} onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save Item"}</button>
-              <button style={btn.ghost} onClick={() => setModal(null)}>Cancel</button>
+
+            {error && <p style={form.error}>{error}</p>}
+
+            <div style={{ ...form.actions, marginTop: 20 }}>
+              <button style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }} onClick={handleSave} disabled={saving}>
+                {saving ? "Saving…" : (editId ? "Update" : "Add Item")}
+              </button>
+              <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -249,6 +319,31 @@ export default function OfficeMenuItems() {
   );
 }
 
-const aBtn = (color) => ({ background: "transparent", border: `1px solid ${color}`, borderRadius: 2, color, fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" });
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
-const modalBox = { background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: 6, padding: 28, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.6)" };
+const s = {
+  overlay: {
+    position:       "fixed",
+    inset:          0,
+    background:     "rgba(0,0,0,0.7)",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
+    zIndex:         300,
+    padding:        16,
+  },
+  modalBox: {
+    background:  "var(--ash)",
+    border:      "1px solid var(--pit)",
+    borderRadius: 6,
+    padding:     28,
+    width:       "100%",
+    maxWidth:    520,
+    maxHeight:   "90vh",
+    overflowY:   "auto",
+    boxShadow:   "0 16px 48px rgba(0,0,0,0.6)",
+  },
+  formGrid: {
+    display:             "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap:                 14,
+  },
+};

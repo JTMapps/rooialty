@@ -9648,12 +9648,15 @@ const s = {
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Checkout.jsx =====
 
+// src/pages/Checkout.jsx
 import { useCartContext as useCart } from "../context/CartContext";
 import useAuth from "../hooks/useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { btn, text } from "../styles/components";
+import { page } from "../styles/page";
+import { form } from "../styles/forms";
 
 export default function Checkout() {
   const { user }                   = useAuth();
@@ -9710,19 +9713,19 @@ export default function Checkout() {
   };
 
   return (
-    <div style={s.page}>
-      <div style={s.inner}>
+    <div style={page.wrapper}>
+      <div style={page.columnWide}>
 
         <div style={s.titleRow}>
-          <div style={s.eyebrow}>Your Order</div>
-          <h1 style={s.title}>Checkout</h1>
-          <div style={s.divider} />
+          <div style={page.eyebrow}>Your Order</div>
+          <h1 style={page.titleHero}>Checkout</h1>
+          <div style={page.divider} />
         </div>
 
         {items.length === 0 ? (
-          <div style={s.empty}>
+          <div style={page.emptyState}>
             <span style={{ fontSize: 40 }}>🛒</span>
-            <p style={s.emptyText}>Your cart is empty</p>
+            <p style={page.emptyLabel}>Your cart is empty</p>
           </div>
         ) : (
           <>
@@ -9749,7 +9752,7 @@ export default function Checkout() {
               </span>
             </div>
 
-            {error && <p style={{ ...text.error, marginBottom: 12 }}>{error}</p>}
+            {error && <p style={{ ...form.error, marginBottom: 12 }}>{error}</p>}
 
             <button
               className="btn-primary"
@@ -9773,53 +9776,8 @@ export default function Checkout() {
 }
 
 const s = {
-  page: {
-    minHeight:  "100vh",
-    background: "var(--smoke)",
-  },
-  inner: {
-    maxWidth: 520,
-    margin:   "0 auto",
-    padding:  "40px 16px 80px",
-  },
   titleRow: {
     marginBottom: 32,
-  },
-  eyebrow: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      11,
-    fontWeight:    700,
-    letterSpacing: "0.35em",
-    textTransform: "uppercase",
-    color:         "var(--fire)",
-    marginBottom:  6,
-  },
-  title: {
-    fontFamily:    "var(--font-display)",
-    fontSize:      "clamp(40px, 8vw, 64px)",
-    letterSpacing: "0.04em",
-    color:         "var(--bone)",
-    margin:        "0 0 12px",
-    lineHeight:    1,
-  },
-  divider: {
-    width:      48,
-    height:     2,
-    background: "var(--fire)",
-  },
-  empty: {
-    display:        "flex",
-    flexDirection:  "column",
-    alignItems:     "center",
-    justifyContent: "center",
-    gap:            12,
-    padding:        "60px 0",
-  },
-  emptyText: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      16,
-    letterSpacing: "0.1em",
-    color:         "var(--muted)",
   },
   itemsList: {
     display:       "flex",
@@ -10422,10 +10380,13 @@ const styles = {
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Login.jsx =====
 
+// src/pages/Login.jsx
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { btn, card, input, layout, text } from "../styles/components";
+import { btn, input } from "../styles/components";
+import { page } from "../styles/page";
+import { form } from "../styles/forms";
 
 export default function Login() {
   const [email,    setEmail]    = useState("");
@@ -10451,27 +10412,26 @@ export default function Login() {
       .eq("id", data.user.id)
       .maybeSingle();
 
-    // Clerks home is /counter (walk-in panel), users home is /menu
     if (profile?.role === "clerk")  { navigate("/counter", { replace: true }); return; }
     if (profile?.role === "office") { navigate("/office",  { replace: true }); return; }
     navigate("/menu", { replace: true });
-      };
+  };
 
-    const inputStyle = (field) => ({
-      ...input.base,
-      ...(focused === field ? input.focused : {}),
-    });
+  const inputStyle = (field) => ({
+    ...input.base,
+    ...(focused === field ? input.focused : {}),
+  });
 
   return (
-    <div style={layout.centered}>
-      <div style={card.auth}>
+    <div style={page.centered}>
+      <div style={page.cardAuth}>
 
-        <div style={s.eyebrow}>Est. in the Streets</div>
+        <div style={page.eyebrow}>Est. in the Streets</div>
         <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
-        <div style={s.divider} />
+        <div style={page.dividerCentered} />
         <p style={s.subtitle}>Login to continue</p>
 
-        <form onSubmit={handleLogin} style={s.form}>
+        <form onSubmit={handleLogin} style={form.stack}>
           <input
             style={inputStyle("email")}
             className="input-base"
@@ -10503,13 +10463,13 @@ export default function Login() {
           </button>
         </form>
 
-        {error && <p style={text.error}>{error}</p>}
+        {error && <p style={form.error}>{error}</p>}
 
         <p style={s.linkText}>
           Don't have an account?{" "}
           <span
             onClick={() => navigate("/register", { replace: true })}
-            style={text.link}
+            style={s.link}
           >
             Register
           </span>
@@ -10521,26 +10481,12 @@ export default function Login() {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      "11px",
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color:         "var(--fire)",
-    marginBottom:  "6px",
-  },
   title: {
     fontFamily:    "var(--font-display)",
     fontSize:      "56px",
     lineHeight:    1,
     letterSpacing: "0.04em",
     margin:        "0 0 12px",
-  },
-  divider: {
-    width:      "40px",
-    height:     "2px",
-    background: "var(--fire)",
-    margin:     "0 auto 16px",
   },
   subtitle: {
     fontFamily:    "var(--font-body)",
@@ -10550,17 +10496,17 @@ const s = {
     color:         "var(--muted)",
     marginBottom:  "24px",
   },
-  form: {
-    display:       "flex",
-    flexDirection: "column",
-    gap:           "10px",
-  },
   linkText: {
     marginTop:     "20px",
     fontSize:      "13px",
     color:         "var(--muted)",
     fontFamily:    "var(--font-body)",
     letterSpacing: "0.05em",
+  },
+  link: {
+    color:          "var(--fire)",
+    cursor:         "pointer",
+    textDecoration: "none",
   },
 };
 
@@ -10572,13 +10518,14 @@ import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import { btn, text } from "../styles/components";
+import { page } from "../styles/page";
 
 const CATEGORY_ICONS = {
-  "URBAN KOTAS":   "🌯",
-  "ROOIALTY MEALS":"👑",
-  "TO SHARE":      "🤝",
-  "WING BAR":      "🍗",
-  "COLD SERVES":   "🧊",
+  "URBAN KOTAS":    "🌯",
+  "ROOIALTY MEALS": "👑",
+  "TO SHARE":       "🤝",
+  "WING BAR":       "🍗",
+  "COLD SERVES":    "🧊",
 };
 
 const CATEGORY_ORDER = [
@@ -10593,13 +10540,12 @@ export default function Menu() {
   const { user } = useAuth();
   const navigate  = useNavigate();
 
-  const [grouped, setGrouped]   = useState({});
-  const [cart, setCart]         = useState(null);
-  const [quantities, setQty]    = useState({});   // itemId → qty in cart
-  const [loading, setLoading]   = useState(true);
-  const [adding, setAdding]     = useState(null);  // itemId being added
+  const [grouped,    setGrouped]  = useState({});
+  const [cart,       setCart]     = useState(null);
+  const [quantities, setQty]      = useState({});
+  const [loading,    setLoading]  = useState(true);
+  const [adding,     setAdding]   = useState(null);
 
-  // ── Load items + active cart ──────────────────────────────────
   useEffect(() => {
     loadMenu();
     if (user) loadCart();
@@ -10646,16 +10592,13 @@ export default function Menu() {
     setQty(qtyMap);
   };
 
-  // ── Cart helpers ──────────────────────────────────────────────
   const ensureCart = async () => {
     if (cart) return cart;
-
     const { data: newCart } = await supabase
       .from("carts")
       .insert([{ user_id: user.id }])
       .select()
       .single();
-
     setCart(newCart);
     return newCart;
   };
@@ -10675,8 +10618,7 @@ export default function Menu() {
         quantity: 1,
       });
     } else {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .update({ quantity: current + 1 })
         .eq("cart_id", activeCart.id)
         .eq("item_id", item.id);
@@ -10692,14 +10634,12 @@ export default function Menu() {
     if (current === 0) return;
 
     if (current === 1) {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .delete()
         .eq("cart_id", cart.id)
         .eq("item_id", item.id);
     } else {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .update({ quantity: current - 1 })
         .eq("cart_id", cart.id)
         .eq("item_id", item.id);
@@ -10710,17 +10650,16 @@ export default function Menu() {
 
   const cartCount = Object.values(quantities).reduce((a, b) => a + b, 0);
 
-  // ── Render ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={s.loadingWrap}>
+      <div style={page.loading}>
         <span className="spinner" />
       </div>
     );
   }
 
   return (
-    <div style={s.page}>
+    <div style={page.wrapper}>
 
       {/* Sticky cart bar */}
       {cartCount > 0 && (
@@ -10744,9 +10683,9 @@ export default function Menu() {
             <div style={s.divider} />
 
             {/* Items grid */}
-            <div style={s.grid}>
+            <div style={page.grid}>
               {grouped[cat].map((item) => {
-                const qty = quantities[item.id] || 0;
+                const qty      = quantities[item.id] || 0;
                 const isAdding = adding === item.id;
 
                 return (
@@ -10793,8 +10732,6 @@ export default function Menu() {
 }
 
 const s = {
-  page:       { minHeight: "100vh", background: "var(--smoke)", paddingBottom: 60 },
-  loadingWrap:{ height: "60vh", display: "flex", alignItems: "center", justifyContent: "center" },
   inner:      { maxWidth: 720, margin: "0 auto", padding: "24px 16px" },
 
   cartBar: {
@@ -10827,20 +10764,15 @@ const s = {
   },
   divider: { width: "100%", height: 1, background: "var(--pit)", marginBottom: 16 },
 
-  grid: {
-    display:             "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap:                 12,
-  },
   itemCard: {
-    background:   "var(--ash)",
-    border:       "1px solid var(--pit)",
-    borderRadius: "4px",
-    padding:      "16px",
-    display:      "flex",
-    flexDirection:"column",
-    gap:          12,
-    transition:   "border-color 0.15s",
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "4px",
+    padding:       "16px",
+    display:       "flex",
+    flexDirection: "column",
+    gap:           12,
+    transition:    "border-color 0.15s",
   },
   itemTop: {
     display:        "flex",
@@ -10871,9 +10803,9 @@ const s = {
     marginTop:      "auto",
   },
   qtyRow: {
-    display:     "flex",
-    alignItems:  "center",
-    gap:         8,
+    display:    "flex",
+    alignItems: "center",
+    gap:        8,
   },
   qtyNum: {
     fontFamily: "var(--font-display)",
@@ -11673,11 +11605,13 @@ const mob = {
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\Orders.jsx =====
 
+// src/pages/Orders.jsx
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import useAuth from "../hooks/useAuth";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import { text } from "../styles/components";
+import { page } from "../styles/page";
 
 export default function Orders() {
   const { user }                      = useAuth();
@@ -11726,13 +11660,15 @@ export default function Orders() {
   const completedOrders = orders.filter((o) => ["completed", "cancelled"].includes(o.status));
   const displayed       = activeTab === "active" ? activeOrders : completedOrders;
 
-  if (loading) return <div style={s.loader}><span className="spinner" /></div>;
+  if (loading) return (
+    <div style={page.loading}>
+      <span className="spinner" />
+    </div>
+  );
 
   return (
     <div style={s.page}>
-      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 36, marginBottom: 16 }}>
-        My Orders
-      </h2>
+      <h2 style={s.heading}>My Orders</h2>
 
       {/* Tabs */}
       <div style={s.tabs}>
@@ -11836,8 +11772,14 @@ export default function Orders() {
 }
 
 const s = {
-  page:   { maxWidth: 600, margin: "0 auto", padding: "32px 16px" },
-  loader: { height: "50vh", display: "flex", alignItems: "center", justifyContent: "center" },
+  page:    { maxWidth: 600, margin: "0 auto", padding: "32px 16px" },
+  heading: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      36,
+    letterSpacing: "0.04em",
+    color:         "var(--bone)",
+    marginBottom:  16,
+  },
   tabs: {
     display:      "flex",
     borderBottom: "1px solid var(--pit)",
@@ -11871,34 +11813,36 @@ const s = {
     display:        "flex",
     justifyContent: "space-between",
     alignItems:     "center",
-    marginBottom:   8,
+    marginBottom:   10,
   },
   meta: {
-    display:      "flex",
-    gap:          16,
+    display:    "flex",
+    gap:        16,
+    flexWrap:   "wrap",
     marginBottom: 8,
   },
   finishedNote: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      11,
-    letterSpacing: "0.08em",
-    color:         "var(--muted)",
-    marginBottom:  4,
+    fontFamily:  "var(--font-body)",
+    fontSize:    12,
+    color:       "var(--muted)",
+    marginTop:   4,
+    letterSpacing: "0.05em",
   },
   toggleBtn: {
     background:    "transparent",
     border:        "none",
-    color:         "var(--muted)",
+    cursor:        "pointer",
     fontFamily:    "var(--font-body)",
     fontSize:      12,
     letterSpacing: "0.1em",
-    cursor:        "pointer",
-    padding:       0,
-    marginBottom:  8,
+    color:         "var(--fire)",
+    padding:       "8px 0 0",
+    textTransform: "uppercase",
   },
   lineItems: {
+    marginTop:     8,
     borderTop:     "1px solid var(--pit)",
-    paddingTop:    10,
+    paddingTop:    8,
     display:       "flex",
     flexDirection: "column",
     gap:           6,
@@ -11906,8 +11850,8 @@ const s = {
   lineItem: {
     display:        "flex",
     justifyContent: "space-between",
-    fontFamily:     "var(--font-body)",
-    fontSize:       14,
+    fontFamily:     "var(--font-sans)",
+    fontSize:       13,
     color:          "var(--bone)",
   },
 };
@@ -12856,75 +12800,107 @@ import { useState, useEffect } from "react";
 import MovementReasonBadge from "../../components/office/MovementReasonBadge";
 import useInventoryMovements from "../../hooks/useInventoryMovements";
 import { supabase } from "../../lib/supabaseClient";
+import { office } from "../../styles/office";
+import { table } from "../../styles/table";
+import { form } from "../../styles/forms";
 
-const ALL_REASONS = ["purchase", "order_consumption", "cancellation_reversal", "manual_adjustment", "wastage", "spoilage", "transfer_out", "transfer_in", "opening_stock"];
-
-const PAGE = {
-  page: { background: "var(--smoke)", minHeight: "100%", paddingBottom: 60 },
-  head: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "28px 24px 20px", borderBottom: "1px solid var(--pit)", flexWrap: "wrap", gap: 16 },
-  eyebrow: { fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4 },
-  title: { fontFamily: "var(--font-display)", fontSize: "clamp(32px, 5vw, 48px)", letterSpacing: "0.04em", color: "var(--bone)", margin: 0, lineHeight: 1 },
-};
-const inp = { padding: "7px 10px", background: "#161616", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 13, outline: "none" };
-const th = { fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)", padding: "10px 12px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap", background: "var(--ash)", position: "sticky", top: 0 };
-const td = { padding: "10px 12px", borderBottom: "1px solid var(--pit)", fontSize: 13, color: "var(--bone)", verticalAlign: "middle" };
+const ALL_REASONS = [
+  "purchase", "order_consumption", "cancellation_reversal",
+  "manual_adjustment", "wastage", "spoilage",
+  "transfer_out", "transfer_in", "opening_stock",
+];
 
 export default function OfficeLedger() {
-  const [filters, setFilters] = useState({});
-  const [ingredients, setIngredients] = useState([]);
-  const [integrityResult, setIntegrityResult] = useState(null);
-  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
+  const [filters,          setFilters]          = useState({});
+  const [ingredients,      setIngredients]      = useState([]);
+  const [integrityResult,  setIntegrityResult]  = useState(null);
+  const [checkingIntegrity,setCheckingIntegrity]= useState(false);
 
-  const { movements, loading, count, page, goToPage, pageSize, fetch } = useInventoryMovements(filters);
+  const { movements, loading, count, page, goToPage, pageSize, fetch } =
+    useInventoryMovements(filters);
+
   const totalPages = Math.ceil(count / pageSize) || 1;
 
   useEffect(() => {
-    supabase.from("ingredients").select("id, name, unit").is("deleted_at", null).order("name").then(({ data }) => setIngredients(data || []));
+    supabase
+      .from("ingredients")
+      .select("id, name, unit")
+      .is("deleted_at", null)
+      .order("name")
+      .then(({ data }) => setIngredients(data || []));
   }, []);
 
   useEffect(() => { fetch(0); }, [filters]);
 
-  const setFilter = (key, val) => setFilters((f) => ({ ...f, [key]: val || undefined }));
+  const setFilter = (key, val) =>
+    setFilters((f) => ({ ...f, [key]: val || undefined }));
 
-  // Summary stats for filtered data
   const totalIn  = movements.reduce((s, m) => m.delta > 0 ? s + Number(m.delta) : s, 0);
   const totalOut = movements.reduce((s, m) => m.delta < 0 ? s + Number(m.delta) : s, 0);
 
   const handleIntegrityCheck = async () => {
     setCheckingIntegrity(true);
     setIntegrityResult(null);
+
     const [ledgerRes, cacheRes] = await Promise.all([
       supabase.from("inventory_movements").select("ingredient_id, delta"),
       supabase.from("ingredient_stock_cache").select("ingredient_id, current_stock"),
     ]);
+
     const ledger = {};
-    (ledgerRes.data || []).forEach((m) => { ledger[m.ingredient_id] = (ledger[m.ingredient_id] || 0) + Number(m.delta); });
+    (ledgerRes.data || []).forEach((m) => {
+      ledger[m.ingredient_id] = (ledger[m.ingredient_id] || 0) + Number(m.delta);
+    });
     const cache = {};
-    (cacheRes.data || []).forEach((c) => { cache[c.ingredient_id] = Number(c.current_stock); });
-    const mismatches = Object.keys(ledger).filter((id) => Math.abs((ledger[id] || 0) - (cache[id] || 0)) > 0.001);
+    (cacheRes.data || []).forEach((c) => {
+      cache[c.ingredient_id] = Number(c.current_stock);
+    });
+
+    const mismatches = Object.keys(ledger).filter(
+      (id) => Math.abs((ledger[id] || 0) - (cache[id] || 0)) > 0.001
+    );
     setIntegrityResult({ mismatches, total: Object.keys(ledger).length });
     setCheckingIntegrity(false);
   };
 
   return (
-    <div style={PAGE.page}>
-      <div style={PAGE.head}>
+    <div style={office.page}>
+
+      {/* ── Header ── */}
+      <div style={office.head}>
         <div>
-          <div style={PAGE.eyebrow}>Audit Trail</div>
-          <h1 style={PAGE.title}>Movements Ledger</h1>
+          <div style={office.eyebrow}>Audit Trail</div>
+          <h1 style={office.title}>Movements Ledger</h1>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)" }}>{count.toLocaleString()} movements</span>
-          <button onClick={handleIntegrityCheck} disabled={checkingIntegrity} style={{ background: "transparent", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--muted)", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "6px 14px", cursor: "pointer" }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)" }}>
+            {count.toLocaleString()} movements
+          </span>
+          <button
+            onClick={handleIntegrityCheck}
+            disabled={checkingIntegrity}
+            style={table.ghostBtn}
+          >
             {checkingIntegrity ? "Checking…" : "Verify Integrity"}
           </button>
         </div>
       </div>
 
-      {/* Integrity result */}
+      {/* ── Integrity result ── */}
       {integrityResult && (
-        <div style={{ margin: "16px 24px", padding: "14px 18px", background: integrityResult.mismatches.length === 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${integrityResult.mismatches.length === 0 ? "#22c55e" : "var(--ember)"}`, borderRadius: 4 }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: integrityResult.mismatches.length === 0 ? "#22c55e" : "var(--ember)" }}>
+        <div style={{
+          margin:     "16px 24px",
+          padding:    "14px 18px",
+          background: integrityResult.mismatches.length === 0
+            ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+          border:     `1px solid ${integrityResult.mismatches.length === 0 ? "#22c55e" : "var(--ember)"}`,
+          borderRadius: 4,
+        }}>
+          <span style={{
+            fontFamily: "var(--font-body)",
+            fontSize:   13,
+            color:      integrityResult.mismatches.length === 0 ? "#22c55e" : "var(--ember)",
+          }}>
             {integrityResult.mismatches.length === 0
               ? `✓ Ledger and cache are in sync across ${integrityResult.total} ingredients`
               : `⚠ ${integrityResult.mismatches.length} discrepancy/ies detected — reconcile via the Reconciliation tab`}
@@ -12932,51 +12908,98 @@ export default function OfficeLedger() {
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ padding: "14px 24px", background: "var(--ash)", borderBottom: "1px solid var(--pit)", display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <select style={inp} value={filters.ingredientId || ""} onChange={(e) => setFilter("ingredientId", e.target.value)}>
+      {/* ── Filters ── */}
+      <div style={office.toolbar}>
+        <select
+          style={office.toolbarSelect}
+          value={filters.ingredientId || ""}
+          onChange={(e) => setFilter("ingredientId", e.target.value)}
+        >
           <option value="">All Ingredients</option>
           {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
         </select>
-        <select style={inp} value={filters.reason || ""} onChange={(e) => setFilter("reason", e.target.value)}>
+
+        <select
+          style={office.toolbarSelect}
+          value={filters.reason || ""}
+          onChange={(e) => setFilter("reason", e.target.value)}
+        >
           <option value="">All Reasons</option>
-          {ALL_REASONS.map((r) => <option key={r} value={r}>{r.replace(/_/g, " ")}</option>)}
+          {ALL_REASONS.map((r) => (
+            <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+          ))}
         </select>
-        <select style={inp} value={filters.direction || ""} onChange={(e) => setFilter("direction", e.target.value)}>
+
+        <select
+          style={office.toolbarSelect}
+          value={filters.direction || ""}
+          onChange={(e) => setFilter("direction", e.target.value)}
+        >
           <option value="">All Directions</option>
           <option value="in">Inflows only (+)</option>
           <option value="out">Outflows only (−)</option>
         </select>
-        <input style={{ ...inp, maxWidth: 150 }} type="date" value={filters.dateFrom || ""} onChange={(e) => setFilter("dateFrom", e.target.value)} title="From date" />
-        <input style={{ ...inp, maxWidth: 150 }} type="date" value={filters.dateTo || ""} onChange={(e) => setFilter("dateTo", e.target.value)} title="To date" />
-        {Object.keys(filters).some(Boolean) && (
-          <button style={{ background: "transparent", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--muted)", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "6px 14px", cursor: "pointer" }}
-            onClick={() => setFilters({})}>Clear</button>
+
+        <input
+          style={{ ...office.toolbarSelect, maxWidth: 150 }}
+          type="date"
+          value={filters.dateFrom || ""}
+          onChange={(e) => setFilter("dateFrom", e.target.value)}
+          title="From date"
+        />
+        <input
+          style={{ ...office.toolbarSelect, maxWidth: 150 }}
+          type="date"
+          value={filters.dateTo || ""}
+          onChange={(e) => setFilter("dateTo", e.target.value)}
+          title="To date"
+        />
+
+        {Object.values(filters).some(Boolean) && (
+          <button style={table.ghostBtn} onClick={() => setFilters({})}>
+            Clear
+          </button>
         )}
       </div>
 
-      {/* Summary strip */}
+      {/* ── Summary strip ── */}
       {movements.length > 0 && (
-        <div style={{ padding: "10px 24px", background: "var(--char)", borderBottom: "1px solid var(--pit)", display: "flex", gap: 24 }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#22c55e" }}>↑ Inflow: +{totalIn.toFixed(3)}</span>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ember)" }}>↓ Outflow: {totalOut.toFixed(3)}</span>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)" }}>Net: {(totalIn + totalOut).toFixed(3)}</span>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>Showing {movements.length} of {count}</span>
+        <div style={{
+          padding:     "10px 24px",
+          background:  "var(--char)",
+          borderBottom:"1px solid var(--pit)",
+          display:     "flex",
+          gap:         24,
+        }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#22c55e" }}>
+            ↑ Inflow: +{totalIn.toFixed(3)}
+          </span>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ember)" }}>
+            ↓ Outflow: {totalOut.toFixed(3)}
+          </span>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)" }}>
+            Net: {(totalIn + totalOut).toFixed(3)}
+          </span>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>
+            Showing {movements.length} of {count}
+          </span>
         </div>
       )}
 
-      {/* Table */}
-      <div style={{ overflowX: "auto", padding: "0 24px" }}>
+      {/* ── Table ── */}
+      <div style={table.wrapper}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-body)", color: "var(--muted)", letterSpacing: "0.2em" }}>LOADING…</div>
+          <div style={office.loading}>LOADING…</div>
         ) : movements.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-body)", color: "var(--muted)" }}>No movements match the current filters.</div>
+          <div style={office.emptyState}>
+            <p style={office.emptyLabel}>No movements match the current filters.</p>
+          </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={table.table}>
             <thead>
               <tr>
                 {["Date/Time", "Ingredient", "Delta", "Reason", "Order", "Performed By", "Unit Cost", "Note"].map((h) => (
-                  <th key={h} style={th}>{h}</th>
+                  <th key={h} style={table.th}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -12984,29 +13007,42 @@ export default function OfficeLedger() {
               {movements.map((m) => {
                 const pos = m.delta > 0;
                 return (
-                  <tr key={m.id} style={{ transition: "background 0.1s" }}>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                      {new Date(m.created_at).toLocaleString("en-ZA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  <tr key={m.id}>
+                    <td style={{ ...table.td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                      {new Date(m.created_at).toLocaleString("en-ZA", {
+                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                      })}
                     </td>
-                    <td style={td}>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--bone)" }}>{m.ingredient?.name ?? "—"}</div>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: "var(--muted)", letterSpacing: "0.15em", textTransform: "uppercase" }}>{m.ingredient?.unit}</div>
+                    <td style={table.td}>
+                      <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--bone)" }}>
+                        {m.ingredient?.name ?? "—"}
+                      </div>
+                      <div style={table.sub}>{m.ingredient?.unit}</div>
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-display)", fontSize: 18, letterSpacing: "0.04em", color: pos ? "#22c55e" : "var(--ember)", whiteSpace: "nowrap" }}>
+                    <td style={{
+                      ...table.td,
+                      fontFamily: "var(--font-display)",
+                      fontSize:   18,
+                      letterSpacing: "0.04em",
+                      color:      pos ? "#22c55e" : "var(--ember)",
+                      whiteSpace: "nowrap",
+                    }}>
                       {pos ? "+" : ""}{Number(m.delta).toFixed(3)}
                     </td>
-                    <td style={td}><MovementReasonBadge reason={m.reason} /></td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                    <td style={table.td}>
+                      <MovementReasonBadge reason={m.reason} />
+                    </td>
+                    <td style={{ ...table.td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
                       {m.order ? `#${m.order.id.slice(0, 8)}` : "—"}
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--bone)" }}>
-                      {m.performed_by_profile?.username ? `@${m.performed_by_profile.username}` : <span style={{ color: "var(--muted)" }}>system</span>}
+                    <td style={{ ...table.td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)" }}>
+                      {m.performed_by_profile?.username ?? "—"}
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--gold)" }}>
-                      {m.unit_cost_at_time ? `R${Number(m.unit_cost_at_time).toFixed(4)}` : "—"}
+                    <td style={{ ...table.td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)" }}>
+                      {m.unit_cost_at_time != null ? `R${Number(m.unit_cost_at_time).toFixed(4)}` : "—"}
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.note ?? "—"}
+                    <td style={{ ...table.td, fontSize: 12, color: "var(--muted)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.note || "—"}
                     </td>
                   </tr>
                 );
@@ -13016,65 +13052,67 @@ export default function OfficeLedger() {
         )}
       </div>
 
-      {/* Pagination */}
-      <div style={{ display: "flex", gap: 8, padding: "16px 24px", alignItems: "center" }}>
-        <button style={{ ...pgBtn, opacity: page === 0 ? 0.4 : 1 }} onClick={() => goToPage(page - 1)} disabled={page === 0}>← Prev</button>
-        <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)" }}>Page {page + 1} of {totalPages}</span>
-        <button style={{ ...pgBtn, opacity: page >= totalPages - 1 ? 0.4 : 1 }} onClick={() => goToPage(page + 1)} disabled={page >= totalPages - 1}>Next →</button>
-      </div>
+      {/* ── Pagination ── */}
+      {!loading && totalPages > 1 && (
+        <div style={{ display: "flex", gap: 8, padding: "16px 24px", alignItems: "center" }}>
+          <button
+            style={table.ghostBtn}
+            onClick={() => goToPage(page - 1)}
+            disabled={page === 0}
+          >
+            ← Prev
+          </button>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", letterSpacing: "0.1em" }}>
+            Page {page + 1} / {totalPages}
+          </span>
+          <button
+            style={table.ghostBtn}
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages - 1}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-const pgBtn = { background: "transparent", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--muted)", fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase", padding: "6px 14px", cursor: "pointer" };
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\office\OfficeMenuItems.jsx =====
 
 // src/pages/office/OfficeMenuItems.jsx
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { btn } from "../../styles/components";
+import { office } from "../../styles/office";
+import { table } from "../../styles/table";
+import { form } from "../../styles/forms";
 
 const CATEGORIES = ["URBAN KOTAS", "ROOIALTY MEALS", "TO SHARE", "WINGS", "WING BAR", "COLD SERVES"];
 const ITEM_TYPES = ["food", "drink"];
-
-const PAGE = {
-  head: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "28px 24px 20px", borderBottom: "1px solid var(--pit)", flexWrap: "wrap", gap: 16 },
-  eyebrow: { fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4 },
-  title: { fontFamily: "var(--font-display)", fontSize: "clamp(32px, 5vw, 48px)", letterSpacing: "0.04em", color: "var(--bone)", margin: 0, lineHeight: 1 },
-};
-const inp = { width: "100%", padding: "8px 12px", background: "#161616", border: "1px solid var(--pit)", borderRadius: 3, color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", boxSizing: "border-box" };
-const lbl = { fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 4 };
-const th = { fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)", padding: "10px 12px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap", background: "var(--ash)" };
-const td = { padding: "10px 12px", borderBottom: "1px solid var(--pit)", fontSize: 13, color: "var(--bone)", verticalAlign: "middle" };
-
 const EMPTY_FORM = { name: "", category: CATEGORIES[0], item_type: "food", price: "", in_stock: true };
 
 export default function OfficeMenuItems() {
-  const navigate = useNavigate();
-  const [items,       setItems]       = useState([]);
+  const [items,        setItems]        = useState([]);
   const [availability, setAvailability] = useState({});
-  const [loading,     setLoading]     = useState(true);
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [filterCat,   setFilterCat]   = useState("all");
-  const [filterType,  setFilterType]  = useState("all");
-  const [search,      setSearch]      = useState("");
-  const [modal,       setModal]       = useState(null);
-  const [form,        setForm]        = useState(EMPTY_FORM);
-  const [editId,      setEditId]      = useState(null);
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState("");
+  const [loading,      setLoading]      = useState(true);
+  const [showDeleted,  setShowDeleted]  = useState(false);
+  const [filterCat,    setFilterCat]    = useState("all");
+  const [filterType,   setFilterType]   = useState("all");
+  const [search,       setSearch]       = useState("");
+  const [modal,        setModal]        = useState(null);
+  const [formState,    setFormState]    = useState(EMPTY_FORM);
+  const [editId,       setEditId]       = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState("");
 
   const load = useCallback(async () => {
-    const [itemsRes, ingsRes] = await Promise.all([
+    const [itemsRes] = await Promise.all([
       supabase.from("items").select("id, name, category, item_type, price, in_stock, deleted_at").order("name"),
-      supabase.from("ingredients").select("id, reorder_level, ingredient_stock_cache(current_stock), item_ingredients!inner(item_id, quantity_required, deleted_at)").is("deleted_at", null),
     ]);
 
     setItems(itemsRes.data || []);
 
-    // Build simple availability map: does item have BOM?
     const { data: bomData } = await supabase
       .from("item_ingredients")
       .select("item_id, quantity_required, deleted_at, ingredient:ingredients(ingredient_stock_cache(current_stock))")
@@ -13084,12 +13122,12 @@ export default function OfficeMenuItems() {
     (bomData || []).forEach((line) => {
       if (!avMap[line.item_id]) avMap[line.item_id] = { hasBom: true, servings: [] };
       const stock = line.ingredient?.ingredient_stock_cache?.current_stock ?? 0;
-      const qty = line.quantity_required;
+      const qty   = line.quantity_required;
       avMap[line.item_id].servings.push(qty > 0 ? Math.floor(stock / qty) : 0);
     });
     Object.keys(avMap).forEach((id) => {
-      const s = avMap[id].servings;
-      avMap[id].maxServings = s.length ? Math.min(...s) : 0;
+      const servings = avMap[id].servings;
+      avMap[id].maxServings = servings.length ? Math.min(...servings) : 0;
     });
     setAvailability(avMap);
     setLoading(false);
@@ -13106,17 +13144,27 @@ export default function OfficeMenuItems() {
     return true;
   });
 
-  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setError(""); setModal("form"); };
+  const openAdd = () => {
+    setFormState(EMPTY_FORM); setEditId(null); setError(""); setModal("form");
+  };
   const openEdit = (item) => {
-    setForm({ name: item.name, category: item.category, item_type: item.item_type, price: item.price, in_stock: item.in_stock });
+    setFormState({ name: item.name, category: item.category, item_type: item.item_type, price: item.price, in_stock: item.in_stock });
     setEditId(item.id); setError(""); setModal("form");
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError("Name is required."); return; }
-    if (form.price === "" || isNaN(Number(form.price)) || Number(form.price) < 0) { setError("Valid price is required."); return; }
+    if (!formState.name.trim()) { setError("Name is required."); return; }
+    if (formState.price === "" || isNaN(Number(formState.price)) || Number(formState.price) < 0) {
+      setError("Valid price is required."); return;
+    }
     setSaving(true); setError("");
-    const payload = { name: form.name.trim(), category: form.category, item_type: form.item_type, price: Number(form.price), in_stock: form.in_stock };
+    const payload = {
+      name:      formState.name.trim(),
+      category:  formState.category,
+      item_type: formState.item_type,
+      price:     Number(formState.price),
+      in_stock:  formState.in_stock,
+    };
     let err;
     if (editId) {
       ({ error: err } = await supabase.from("items").update(payload).eq("id", editId));
@@ -13140,94 +13188,153 @@ export default function OfficeMenuItems() {
     load();
   };
 
+  const handleToggleStock = async (item) => {
+    await supabase.from("items").update({ in_stock: !item.in_stock }).eq("id", item.id);
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, in_stock: !i.in_stock } : i));
+  };
+
   const getAvailStatus = (item) => {
     const a = availability[item.id];
-    if (!a) return { label: "Untracked", color: "var(--muted)", bg: "rgba(107,114,128,0.15)" };
+    if (!a) return { label: "Untracked", color: "var(--muted)",  bg: "rgba(107,114,128,0.15)" };
     if (a.maxServings > 0) return { label: `${a.maxServings} servings`, color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
     return { label: "OUT", color: "var(--ember)", bg: "rgba(220,38,38,0.15)" };
   };
 
+  const setF = (key, val) => setFormState((prev) => ({ ...prev, [key]: val }));
+
   return (
-    <div style={{ background: "var(--smoke)", minHeight: "100%", paddingBottom: 60 }}>
-      <div style={PAGE.head}>
+    <div style={office.page}>
+
+      {/* ── Header ── */}
+      <div style={office.head}>
         <div>
-          <div style={PAGE.eyebrow}>Menu Management</div>
-          <h1 style={PAGE.title}>Menu Items</h1>
+          <div style={office.eyebrow}>Menu Management</div>
+          <h1 style={office.title}>Menu Items</h1>
         </div>
-        <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>+ Add Item</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            style={{ ...btn.ghost, fontSize: 12 }}
+            onClick={() => setShowDeleted((v) => !v)}
+          >
+            {showDeleted ? "Show Active" : "Show Archived"}
+          </button>
+          {!showDeleted && (
+            <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>
+              + Add Item
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ padding: "14px 24px", background: "var(--ash)", borderBottom: "1px solid var(--pit)", display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <input style={{ ...inp, maxWidth: 220 }} placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select style={{ ...inp, maxWidth: 180 }} value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+      {/* ── Toolbar ── */}
+      <div style={office.toolbar}>
+        <input
+          style={office.toolbarSearch}
+          placeholder="Search items…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          style={office.toolbarSelect}
+          value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}
+        >
           <option value="all">All Categories</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select style={{ ...inp, maxWidth: 130 }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+        <select
+          style={office.toolbarSelect}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
           <option value="all">All Types</option>
-          <option value="food">Food</option>
-          <option value="drink">Drink</option>
+          {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button style={{ background: showDeleted ? "rgba(239,68,68,0.1)" : "transparent", border: `1px solid ${showDeleted ? "var(--ember)" : "var(--pit)"}`, color: showDeleted ? "var(--ember)" : "var(--muted)", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", padding: "6px 14px", borderRadius: 2, cursor: "pointer" }}
-          onClick={() => setShowDeleted(!showDeleted)}>{showDeleted ? "Showing Archived" : "Show Archived"}</button>
+        <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>
+          {visible.length} items
+        </span>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto", padding: "0 24px" }}>
+      {/* ── Table ── */}
+      <div style={table.wrapper}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", fontFamily: "var(--font-body)", color: "var(--muted)", letterSpacing: "0.2em" }}>LOADING…</div>
+          <div style={office.loading}>Loading…</div>
         ) : visible.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-body)", color: "var(--muted)", letterSpacing: "0.2em", marginBottom: 16 }}>No items found</div>
-            {!showDeleted && <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>Add your first menu item →</button>}
+          <div style={office.emptyState}>
+            <p style={office.emptyLabel}>No items found.</p>
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={table.table}>
             <thead>
-              <tr>{["Name", "Category", "Type", "Price", "Recipe", "Availability", "In Stock", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>
+                {["Name", "Category", "Type", "Price", "In Stock", "Availability", "Actions"].map((h) => (
+                  <th key={h} style={table.th}>{h}</th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {visible.map((item) => {
                 const avail = getAvailStatus(item);
-                const hasBom = !!availability[item.id];
-                const isArchived = !!item.deleted_at;
                 return (
-                  <tr key={item.id} style={{ opacity: isArchived ? 0.5 : 1, transition: "background 0.1s" }}>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--bone)", letterSpacing: "0.04em", textDecoration: isArchived ? "line-through" : "none" }}>
-                        {item.name}
-                      </span>
+                  <tr key={item.id}>
+                    <td style={{ ...table.td, fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.category}</td>
+                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.item_type}</td>
+                    <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16, color: "var(--gold)" }}>
+                      R{Number(item.price).toFixed(2)}
                     </td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 11, color: "var(--muted)", letterSpacing: "0.1em" }}>{item.category}</td>
-                    <td style={{ ...td, fontFamily: "var(--font-body)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.15em", color: item.item_type === "food" ? "var(--gold)" : "#3b82f6" }}>{item.item_type}</td>
-                    <td style={{ ...td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--gold)", letterSpacing: "0.04em" }}>R{Number(item.price).toFixed(2)}</td>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 2, background: hasBom ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)", color: hasBom ? "#22c55e" : "var(--muted)" }}>
-                        {hasBom ? "Configured" : "No Recipe"}
-                      </span>
+                    <td style={table.td}>
+                      <button
+                        style={{
+                          background:    item.in_stock ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)",
+                          border:        "none",
+                          borderRadius:  2,
+                          color:         item.in_stock ? "#22c55e" : "var(--muted)",
+                          fontFamily:    "var(--font-body)",
+                          fontSize:      10,
+                          fontWeight:    700,
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          padding:       "3px 8px",
+                          cursor:        "pointer",
+                        }}
+                        onClick={() => handleToggleStock(item)}
+                        title="Toggle stock status"
+                      >
+                        {item.in_stock ? "In Stock" : "Out"}
+                      </button>
                     </td>
-                    <td style={td}>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 2, background: avail.bg, color: avail.color }}>
+                    <td style={table.td}>
+                      <span style={{
+                        background:    avail.bg,
+                        color:         avail.color,
+                        fontFamily:    "var(--font-body)",
+                        fontSize:      10,
+                        fontWeight:    700,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        padding:       "3px 8px",
+                        borderRadius:  2,
+                      }}>
                         {avail.label}
                       </span>
                     </td>
-                    <td style={td}>
-                      <div style={{ width: 32, height: 18, borderRadius: 9, background: item.in_stock ? "var(--fire)" : "var(--pit)", position: "relative", cursor: "pointer", transition: "background 0.2s" }}
-                        onClick={async () => { await supabase.from("items").update({ in_stock: !item.in_stock }).eq("id", item.id); load(); }}>
-                        <div style={{ position: "absolute", width: 14, height: 14, borderRadius: "50%", background: "#fff", top: 2, left: item.in_stock ? 16 : 2, transition: "left 0.2s" }} />
-                      </div>
-                    </td>
-                    <td style={{ ...td, whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        {isArchived ? (
-                          <button style={aBtn("var(--fire)")} onClick={() => handleRestore(item)}>Restore</button>
+                    <td style={table.td}>
+                      <div style={table.actions}>
+                        {!item.deleted_at && (
+                          <button style={table.actionBtn} onClick={() => openEdit(item)}>Edit</button>
+                        )}
+                        {!item.deleted_at ? (
+                          <button
+                            style={{ ...table.actionBtn, color: "var(--ember)", borderColor: "var(--ember)" }}
+                            onClick={() => handleArchive(item)}
+                          >
+                            Archive
+                          </button>
                         ) : (
-                          <>
-                            <button style={aBtn("var(--muted)")} onClick={() => openEdit(item)}>Edit</button>
-                            <button style={aBtn("var(--fire)")} onClick={() => navigate("/office/recipes")}>Recipe</button>
-                            <button style={aBtn("var(--ember)")} onClick={() => handleArchive(item)}>Archive</button>
-                          </>
+                          <button style={table.actionBtn} onClick={() => handleRestore(item)}>
+                            Restore
+                          </button>
                         )}
                       </div>
                     </td>
@@ -13239,40 +13346,53 @@ export default function OfficeMenuItems() {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* ── Add / Edit Modal ── */}
       {modal === "form" && (
-        <div style={overlay} onClick={() => setModal(null)}>
-          <div style={modalBox} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", letterSpacing: "0.04em", marginBottom: 20 }}>
-              {editId ? "Edit Menu Item" : "Add Menu Item"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={lbl}>Item Name *</label><input style={inp} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cheese Kota" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div><label style={lbl}>Category *</label>
-                  <select style={inp} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+        <div style={s.overlay}>
+          <div style={s.modalBox}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", margin: "0 0 20px" }}>
+              {editId ? "Edit Item" : "Add Item"}
+            </h2>
+
+            <div style={form.stack}>
+              <div style={form.field}>
+                <label style={form.label}>Name</label>
+                <input style={form.input} value={formState.name} onChange={(e) => setF("name", e.target.value)} placeholder="Item name" />
+              </div>
+
+              <div style={s.formGrid}>
+                <div style={form.field}>
+                  <label style={form.label}>Category</label>
+                  <select style={form.select} value={formState.category} onChange={(e) => setF("category", e.target.value)}>
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div><label style={lbl}>Type</label>
-                  <select style={inp} value={form.item_type} onChange={(e) => setForm({ ...form, item_type: e.target.value })}>
-                    <option value="food">Food</option>
-                    <option value="drink">Drink</option>
+                <div style={form.field}>
+                  <label style={form.label}>Type</label>
+                  <select style={form.select} value={formState.item_type} onChange={(e) => setF("item_type", e.target.value)}>
+                    {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
-              <div><label style={lbl}>Price (R) *</label><input style={inp} type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="e.g. 45.00" /></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 36, height: 20, borderRadius: 10, background: form.in_stock ? "var(--fire)" : "var(--pit)", position: "relative", cursor: "pointer", transition: "background 0.2s" }} onClick={() => setForm({ ...form, in_stock: !form.in_stock })}>
-                  <div style={{ position: "absolute", width: 16, height: 16, borderRadius: "50%", background: "#fff", top: 2, left: form.in_stock ? 18 : 2, transition: "left 0.2s" }} />
-                </div>
-                <label style={{ ...lbl, marginBottom: 0 }}>In Stock</label>
+
+              <div style={form.field}>
+                <label style={form.label}>Price (R)</label>
+                <input style={form.input} type="number" min="0" step="0.01" value={formState.price} onChange={(e) => setF("price", e.target.value)} placeholder="0.00" />
               </div>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
+                <input type="checkbox" checked={formState.in_stock} onChange={(e) => setF("in_stock", e.target.checked)} />
+                <span style={form.label}>In Stock</span>
+              </label>
             </div>
-            {error && <p style={{ color: "var(--ember)", fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" }}>{error}</p>}
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }} onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save Item"}</button>
-              <button style={btn.ghost} onClick={() => setModal(null)}>Cancel</button>
+
+            {error && <p style={form.error}>{error}</p>}
+
+            <div style={{ ...form.actions, marginTop: 20 }}>
+              <button style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }} onClick={handleSave} disabled={saving}>
+                {saving ? "Saving…" : (editId ? "Update" : "Add Item")}
+              </button>
+              <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -13281,9 +13401,34 @@ export default function OfficeMenuItems() {
   );
 }
 
-const aBtn = (color) => ({ background: "transparent", border: `1px solid ${color}`, borderRadius: 2, color, fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" });
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
-const modalBox = { background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: 6, padding: 28, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.6)" };
+const s = {
+  overlay: {
+    position:       "fixed",
+    inset:          0,
+    background:     "rgba(0,0,0,0.7)",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
+    zIndex:         300,
+    padding:        16,
+  },
+  modalBox: {
+    background:  "var(--ash)",
+    border:      "1px solid var(--pit)",
+    borderRadius: 6,
+    padding:     28,
+    width:       "100%",
+    maxWidth:    520,
+    maxHeight:   "90vh",
+    overflowY:   "auto",
+    boxShadow:   "0 16px 48px rgba(0,0,0,0.6)",
+  },
+  formGrid: {
+    display:             "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap:                 14,
+  },
+};
 
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\office\OfficeOrders.jsx =====
 
@@ -14401,33 +14546,42 @@ const s = {
 
 // src/pages/office/OfficeReports.jsx
 // Analytics reports: Sales, Inventory Consumption, Wastage, Stock Valuation, Staff Activity
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { office } from "../../styles/office";
+import { table } from "../../styles/table";
 
 const REPORTS = [
-  { key: "sales",       label: "Sales Summary",          icon: "💰" },
-  { key: "consumption", label: "Inventory Consumption",  icon: "📉" },
-  { key: "wastage",     label: "Wastage & Loss",          icon: "🗑" },
-  { key: "valuation",   label: "Stock Valuation",        icon: "📊" },
-  { key: "staff",       label: "Staff Activity",         icon: "👤" },
+  { key: "sales",       label: "Sales Summary",         icon: "💰" },
+  { key: "consumption", label: "Inventory Consumption", icon: "📉" },
+  { key: "wastage",     label: "Wastage & Loss",         icon: "🗑" },
+  { key: "valuation",   label: "Stock Valuation",       icon: "📊" },
+  { key: "staff",       label: "Staff Activity",        icon: "👤" },
 ];
 
 const fmtCurrency = (n) => `R${Number(n || 0).toFixed(2)}`;
-const fmtDate = (d) => new Date(d).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate     = (d) => new Date(d).toLocaleDateString("en-ZA", {
+  day: "2-digit", month: "short", year: "numeric",
+});
 
 function getDateRange(preset) {
-  const now = new Date();
+  const now  = new Date();
   const from = new Date();
   switch (preset) {
-    case "today":   from.setHours(0, 0, 0, 0); break;
-    case "7d":      from.setDate(now.getDate() - 7); break;
-    case "30d":     from.setDate(now.getDate() - 30); break;
-    case "90d":     from.setDate(now.getDate() - 90); break;
-    default:        from.setDate(now.getDate() - 30);
+    case "today": from.setHours(0, 0, 0, 0); break;
+    case "7d":    from.setDate(now.getDate() - 7); break;
+    case "30d":   from.setDate(now.getDate() - 30); break;
+    case "90d":   from.setDate(now.getDate() - 90); break;
+    default:      from.setDate(now.getDate() - 30);
   }
   return { from: from.toISOString(), to: now.toISOString() };
 }
+
+// ── Status colors helper ────────────────────────────────────────
+const STATUS_COLORS = {
+  pending:   "var(--gold)", confirmed: "#3b82f6", ready: "#a855f7",
+  completed: "#22c55e",     cancelled: "var(--ember)",
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 export default function OfficeReports() {
@@ -14435,27 +14589,29 @@ export default function OfficeReports() {
   const [datePreset,   setDatePreset]   = useState("30d");
 
   return (
-    <div style={s.page}>
-      <div style={s.head}>
+    <div style={office.page}>
+
+      {/* ── Header ── */}
+      <div style={office.head}>
         <div>
-          <div style={s.eyebrow}>Analytics</div>
-          <h1 style={s.title}>Reports</h1>
+          <div style={office.eyebrow}>Analytics</div>
+          <h1 style={office.title}>Reports</h1>
         </div>
         {/* Date range presets */}
         <div style={{ display: "flex", gap: 4 }}>
           {[
-            { val: "today", label: "Today"    },
-            { val: "7d",    label: "7 Days"   },
-            { val: "30d",   label: "30 Days"  },
-            { val: "90d",   label: "90 Days"  },
+            { val: "today", label: "Today"   },
+            { val: "7d",    label: "7 Days"  },
+            { val: "30d",   label: "30 Days" },
+            { val: "90d",   label: "90 Days" },
           ].map((p) => (
             <button
               key={p.val}
               style={{
                 ...s.presetBtn,
-                background:   datePreset === p.val ? "var(--fire)"      : "transparent",
-                color:        datePreset === p.val ? "#000"              : "var(--muted)",
-                border:       datePreset === p.val ? "1px solid var(--fire)" : "1px solid var(--pit)",
+                background: datePreset === p.val ? "var(--fire)"          : "transparent",
+                color:      datePreset === p.val ? "#000"                  : "var(--muted)",
+                border:     datePreset === p.val ? "1px solid var(--fire)" : "1px solid var(--pit)",
               }}
               onClick={() => setDatePreset(p.val)}
             >
@@ -14465,16 +14621,16 @@ export default function OfficeReports() {
         </div>
       </div>
 
-      {/* Report tabs */}
+      {/* ── Report tabs ── */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--pit)", padding: "0 24px", overflowX: "auto" }}>
         {REPORTS.map((r) => (
           <button
             key={r.key}
             style={{
               ...s.reportTab,
-              color:        activeReport === r.key ? "var(--fire)"     : "var(--muted)",
-              borderBottom: activeReport === r.key ? "2px solid var(--fire)" : "2px solid transparent",
-              background:   activeReport === r.key ? "rgba(249,115,22,0.05)" : "transparent",
+              color:        activeReport === r.key ? "var(--fire)"              : "var(--muted)",
+              borderBottom: activeReport === r.key ? "2px solid var(--fire)"    : "2px solid transparent",
+              background:   activeReport === r.key ? "rgba(249,115,22,0.05)"    : "transparent",
             }}
             onClick={() => setActiveReport(r.key)}
           >
@@ -14484,7 +14640,7 @@ export default function OfficeReports() {
         ))}
       </div>
 
-      {/* Active report */}
+      {/* ── Active report ── */}
       <div style={{ padding: "24px" }}>
         {activeReport === "sales"       && <SalesSummary       datePreset={datePreset} />}
         {activeReport === "consumption" && <InventoryConsumption datePreset={datePreset} />}
@@ -14500,7 +14656,7 @@ export default function OfficeReports() {
 // REPORT 1: Sales Summary
 // ────────────────────────────────────────────────────────────────────────────
 function SalesSummary({ datePreset }) {
-  const [data, setData] = useState(null);
+  const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -14510,8 +14666,7 @@ function SalesSummary({ datePreset }) {
     const { data: orders } = await supabase
       .from("orders")
       .select("id, status, total_price, delivery_type, is_walkin, created_at")
-      .gte("created_at", from)
-      .lte("created_at", to);
+      .gte("created_at", from).lte("created_at", to);
 
     const { data: orderItems } = await supabase
       .from("order_items")
@@ -14522,66 +14677,54 @@ function SalesSummary({ datePreset }) {
     const revenue   = completed.reduce((s, o) => s + Number(o.total_price), 0);
     const avgVal    = completed.length ? revenue / completed.length : 0;
 
-    // By status
     const byStatus = (orders || []).reduce((acc, o) => {
-      acc[o.status] = (acc[o.status] || 0) + 1;
-      return acc;
+      acc[o.status] = (acc[o.status] || 0) + 1; return acc;
     }, {});
 
-    // By delivery type
     const byType = (orders || []).reduce((acc, o) => {
       const t = o.is_walkin ? "walk-in" : (o.delivery_type || "unknown");
-      acc[t] = (acc[t] || 0) + 1;
-      return acc;
+      acc[t] = (acc[t] || 0) + 1; return acc;
     }, {});
 
-    // Top items by qty
     const itemQty = {};
     (orderItems || []).forEach((oi) => {
-      const key = oi.item?.id;
-      if (!key) return;
+      const key = oi.item?.id; if (!key) return;
       itemQty[key] = itemQty[key] || { name: oi.item.name, qty: 0, revenue: 0 };
       itemQty[key].qty     += oi.quantity;
       itemQty[key].revenue += oi.quantity * Number(oi.unit_price_at_order);
     });
 
     const topItems = Object.values(itemQty).sort((a, b) => b.qty - a.qty).slice(0, 10);
-
     setData({ orders: orders || [], completed, revenue, avgVal, byStatus, byType, topItems });
     setLoading(false);
   }, [datePreset]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={s.loading}>Loading…</div>;
+  if (loading) return <div style={office.loading}>Loading…</div>;
   if (!data)   return null;
-
-  const STATUS_COLORS = {
-    pending:   "var(--gold)", confirmed: "#3b82f6", ready: "#a855f7",
-    completed: "#22c55e",     cancelled: "var(--ember)",
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* Metrics row */}
-      <div style={s.metricRow}>
+      <div style={office.metricRow}>
         {[
-          { label: "Total Orders",     val: data.orders.length,        color: "var(--bone)" },
-          { label: "Completed",        val: data.completed.length,     color: "#22c55e"     },
-          { label: "Total Revenue",    val: fmtCurrency(data.revenue), color: "var(--gold)" },
-          { label: "Avg Order Value",  val: fmtCurrency(data.avgVal),  color: "var(--bone)" },
+          { label: "Total Orders",    val: data.orders.length,        color: "var(--bone)" },
+          { label: "Completed",       val: data.completed.length,     color: "#22c55e"     },
+          { label: "Total Revenue",   val: fmtCurrency(data.revenue), color: "var(--gold)" },
+          { label: "Avg Order Value", val: fmtCurrency(data.avgVal),  color: "var(--bone)" },
         ].map(({ label, val, color }) => (
-          <div key={label} style={s.metricCard}>
+          <div key={label} style={office.metricCard}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color, letterSpacing: "0.04em" }}>{val}</div>
-            <div style={s.metricLabel}>{label}</div>
+            <div style={office.metricLabel}>{label}</div>
           </div>
         ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         {/* Orders by status */}
-        <div style={s.card}>
-          <div style={s.cardHead}>Orders by Status</div>
+        <div style={office.card}>
+          <div style={office.cardHead}>Orders by Status</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
             {Object.entries(data.byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
               <div key={status} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -14600,21 +14743,16 @@ function SalesSummary({ datePreset }) {
         </div>
 
         {/* Orders by type */}
-        <div style={s.card}>
-          <div style={s.cardHead}>By Order Type</div>
+        <div style={office.card}>
+          <div style={office.cardHead}>By Order Type</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
             {Object.entries(data.byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
               <div key={type} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase", minWidth: 80 }}>
                   {type}
                 </span>
-                <div style={{
-                  flex: 1, height: 20, background: "var(--pit)", borderRadius: 2, overflow: "hidden",
-                }}>
-                  <div style={{
-                    width: `${(count / data.orders.length) * 100}%`,
-                    height: "100%", background: "var(--fire)", borderRadius: 2, transition: "width 0.5s",
-                  }} />
+                <div style={{ flex: 1, height: 20, background: "var(--pit)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ width: `${(count / data.orders.length) * 100}%`, height: "100%", background: "var(--fire)", borderRadius: 2, transition: "width 0.5s" }} />
                 </div>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--bone)" }}>{count}</span>
               </div>
@@ -14624,26 +14762,26 @@ function SalesSummary({ datePreset }) {
       </div>
 
       {/* Top items */}
-      <div style={s.card}>
-        <div style={s.cardHead}>Top Items by Quantity Sold</div>
+      <div style={office.card}>
+        <div style={office.cardHead}>Top Items by Quantity Sold</div>
         {data.topItems.length === 0 ? (
-          <div style={s.emptyText}>No completed orders in this period.</div>
+          <div style={office.emptyLabel}>No completed orders in this period.</div>
         ) : (
-          <table style={s.table}>
+          <table style={table.table}>
             <thead>
               <tr>
-                {["Item", "Qty Sold", "Revenue"].map((h) => <th key={h} style={s.th}>{h}</th>)}
+                {["Item", "Qty Sold", "Revenue"].map((h) => <th key={h} style={table.th}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {data.topItems.map((item, i) => (
                 <tr key={item.name}>
-                  <td style={s.td}>
+                  <td style={table.td}>
                     <span style={{ fontFamily: "var(--font-body)", fontSize: 10, color: "var(--muted)", marginRight: 8 }}>#{i + 1}</span>
                     {item.name}
                   </td>
-                  <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 20, color: "var(--bone)" }}>{item.qty}</td>
-                  <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--gold)" }}>{fmtCurrency(item.revenue)}</td>
+                  <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 20, color: "var(--bone)" }}>{item.qty}</td>
+                  <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--gold)" }}>{fmtCurrency(item.revenue)}</td>
                 </tr>
               ))}
             </tbody>
@@ -14658,7 +14796,7 @@ function SalesSummary({ datePreset }) {
 // REPORT 2: Inventory Consumption
 // ────────────────────────────────────────────────────────────────────────────
 function InventoryConsumption({ datePreset }) {
-  const [data, setData] = useState([]);
+  const [data,    setData]    = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -14669,15 +14807,13 @@ function InventoryConsumption({ datePreset }) {
       .from("inventory_movements")
       .select("delta, reason, ingredient:ingredients(id, name, unit)")
       .lt("delta", 0)
-      .gte("created_at", from)
-      .lte("created_at", to)
+      .gte("created_at", from).lte("created_at", to)
       .not("reason", "eq", "wastage")
       .not("reason", "eq", "spoilage");
 
     const grouped = {};
     (movements || []).forEach((m) => {
-      const key = m.ingredient?.id;
-      if (!key) return;
+      const key = m.ingredient?.id; if (!key) return;
       grouped[key] = grouped[key] || { name: m.ingredient.name, unit: m.ingredient.unit, total: 0, byReason: {} };
       grouped[key].total += Math.abs(m.delta);
       grouped[key].byReason[m.reason] = (grouped[key].byReason[m.reason] || 0) + Math.abs(m.delta);
@@ -14689,33 +14825,35 @@ function InventoryConsumption({ datePreset }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={s.loading}>Loading…</div>;
+  if (loading) return <div style={office.loading}>Loading…</div>;
 
   return (
-    <div style={s.card}>
-      <div style={s.cardHead}>Consumption by Ingredient</div>
+    <div style={office.card}>
+      <div style={office.cardHead}>Consumption by Ingredient</div>
       {data.length === 0 ? (
-        <div style={s.emptyText}>No consumption recorded in this period.</div>
+        <div style={office.emptyLabel}>No consumption recorded in this period.</div>
       ) : (
-        <table style={{ ...s.table, marginTop: 12 }}>
+        <table style={{ ...table.table, marginTop: 12 }}>
           <thead>
             <tr>
-              {["Ingredient", "Total Consumed", "Order Consumption", "Manual/Other"].map((h) => <th key={h} style={s.th}>{h}</th>)}
+              {["Ingredient", "Total Consumed", "Order Consumption", "Manual/Other"].map((h) => (
+                <th key={h} style={table.th}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
               <tr key={row.name}>
-                <td style={{ ...s.td, fontWeight: 600 }}>
+                <td style={{ ...table.td, fontWeight: 600 }}>
                   {row.name} <span style={{ color: "var(--muted)", fontSize: 11 }}>{row.unit}</span>
                 </td>
-                <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--bone)" }}>
+                <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--bone)" }}>
                   {row.total.toFixed(3)}
                 </td>
-                <td style={{ ...s.td, color: "#3b82f6", fontFamily: "var(--font-display)", fontSize: 16 }}>
+                <td style={{ ...table.td, color: "#3b82f6", fontFamily: "var(--font-display)", fontSize: 16 }}>
                   {(row.byReason["order_consumption"] || 0).toFixed(3)}
                 </td>
-                <td style={{ ...s.td, color: "var(--gold)", fontFamily: "var(--font-display)", fontSize: 16 }}>
+                <td style={{ ...table.td, color: "var(--gold)", fontFamily: "var(--font-display)", fontSize: 16 }}>
                   {(row.byReason["manual_adjustment"] || 0).toFixed(3)}
                 </td>
               </tr>
@@ -14728,11 +14866,10 @@ function InventoryConsumption({ datePreset }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// REPORT 3: Wastage & Loss
+// REPORT 3: Wastage Report
 // ────────────────────────────────────────────────────────────────────────────
 function WastageReport({ datePreset }) {
-  const [data, setData] = useState([]);
-  const [totals, setTotals] = useState({ wastage: 0, spoilage: 0, incidents: 0 });
+  const [data,    setData]    = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -14741,72 +14878,66 @@ function WastageReport({ datePreset }) {
 
     const { data: movements } = await supabase
       .from("inventory_movements")
-      .select("delta, reason, unit_cost_at_time, ingredient:ingredients(id, name, unit)")
+      .select("delta, reason, created_at, unit_cost_at_time, ingredient:ingredients(name, unit), performed_by_profile:profiles!performed_by(username)")
       .in("reason", ["wastage", "spoilage"])
-      .gte("created_at", from)
-      .lte("created_at", to);
+      .gte("created_at", from).lte("created_at", to)
+      .order("created_at", { ascending: false });
 
-    const grouped = {};
-    let wTotal = 0, sTotal = 0;
-    (movements || []).forEach((m) => {
-      const key = m.ingredient?.id;
-      if (!key) return;
-      grouped[key] = grouped[key] || { name: m.ingredient.name, unit: m.ingredient.unit, wastage: 0, spoilage: 0, value: 0 };
-      const qty = Math.abs(m.delta);
-      if (m.reason === "wastage")  { grouped[key].wastage  += qty; wTotal += qty; }
-      if (m.reason === "spoilage") { grouped[key].spoilage += qty; sTotal += qty; }
-      if (m.unit_cost_at_time) grouped[key].value += qty * m.unit_cost_at_time;
-    });
-
-    setTotals({ wastage: wTotal, spoilage: sTotal, incidents: movements?.length || 0 });
-    setData(Object.values(grouped).sort((a, b) => (b.wastage + b.spoilage) - (a.wastage + a.spoilage)));
+    setData(movements || []);
     setLoading(false);
   }, [datePreset]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={s.loading}>Loading…</div>;
+  if (loading) return <div style={office.loading}>Loading…</div>;
+
+  const totalCost = data.reduce((s, m) => {
+    const cost = m.unit_cost_at_time ? Math.abs(m.delta) * Number(m.unit_cost_at_time) : 0;
+    return s + cost;
+  }, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={s.metricRow}>
-        {[
-          { label: "Wastage",    val: totals.wastage.toFixed(2),   color: "#dc2626" },
-          { label: "Spoilage",   val: totals.spoilage.toFixed(2),  color: "#fca5a5" },
-          { label: "Total Loss", val: (totals.wastage + totals.spoilage).toFixed(2), color: "var(--ember)" },
-          { label: "Incidents",  val: totals.incidents,             color: "var(--muted)" },
-        ].map(({ label, val, color }) => (
-          <div key={label} style={s.metricCard}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color, letterSpacing: "0.04em" }}>{val}</div>
-            <div style={s.metricLabel}>{label}</div>
-          </div>
-        ))}
+      <div style={office.metricRow}>
+        <div style={office.metricCard}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--ember)" }}>{data.length}</div>
+          <div style={office.metricLabel}>Wastage Events</div>
+        </div>
+        <div style={office.metricCard}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold)" }}>{fmtCurrency(totalCost)}</div>
+          <div style={office.metricLabel}>Estimated Loss</div>
+        </div>
       </div>
 
-      <div style={s.card}>
-        <div style={s.cardHead}>Loss by Ingredient</div>
+      <div style={office.card}>
+        <div style={office.cardHead}>Wastage & Spoilage Events</div>
         {data.length === 0 ? (
-          <div style={s.emptyText}>No loss recorded in this period.</div>
+          <div style={office.emptyLabel}>No wastage recorded in this period.</div>
         ) : (
-          <table style={{ ...s.table, marginTop: 12 }}>
+          <table style={{ ...table.table, marginTop: 12 }}>
             <thead>
               <tr>
-                {["Ingredient", "Wastage", "Spoilage", "Total", "Est. Value"].map((h) => <th key={h} style={s.th}>{h}</th>)}
+                {["Date", "Ingredient", "Qty", "Reason", "Cost", "By"].map((h) => (
+                  <th key={h} style={table.th}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {data.map((row) => (
-                <tr key={row.name}>
-                  <td style={{ ...s.td, fontWeight: 600 }}>
-                    {row.name} <span style={{ color: "var(--muted)", fontSize: 11 }}>{row.unit}</span>
+              {data.map((m) => (
+                <tr key={m.id}>
+                  <td style={{ ...table.td, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)" }}>
+                    {fmtDate(m.created_at)}
                   </td>
-                  <td style={{ ...s.td, color: "#dc2626" }}>{row.wastage.toFixed(3)}</td>
-                  <td style={{ ...s.td, color: "#fca5a5" }}>{row.spoilage.toFixed(3)}</td>
-                  <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 18, color: "var(--ember)" }}>
-                    {(row.wastage + row.spoilage).toFixed(3)}
+                  <td style={{ ...table.td, fontWeight: 600 }}>{m.ingredient?.name ?? "—"}</td>
+                  <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16, color: "var(--ember)" }}>
+                    {Math.abs(m.delta).toFixed(3)} {m.ingredient?.unit}
                   </td>
-                  <td style={{ ...s.td, color: "var(--gold)" }}>
-                    {row.value > 0 ? fmtCurrency(row.value) : "—"}
+                  <td style={{ ...table.td, textTransform: "capitalize", color: "var(--muted)" }}>{m.reason}</td>
+                  <td style={{ ...table.td, color: "var(--gold)" }}>
+                    {m.unit_cost_at_time ? fmtCurrency(Math.abs(m.delta) * Number(m.unit_cost_at_time)) : "—"}
+                  </td>
+                  <td style={{ ...table.td, color: "var(--muted)" }}>
+                    {m.performed_by_profile?.username ? `@${m.performed_by_profile.username}` : "—"}
                   </td>
                 </tr>
               ))}
@@ -14822,75 +14953,65 @@ function WastageReport({ datePreset }) {
 // REPORT 4: Stock Valuation
 // ────────────────────────────────────────────────────────────────────────────
 function StockValuation() {
-  const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
+  const [data,    setData]    = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("ingredients")
-      .select("id, name, unit, cost_per_unit, ingredient_stock_cache(current_stock)")
-      .is("deleted_at", null)
-      .order("name")
-      .then(({ data: ings }) => {
-        let t = 0;
-        const rows = (ings || []).map((i) => {
-          const stock = i.ingredient_stock_cache?.current_stock ?? 0;
-          const val   = stock * (i.cost_per_unit ?? 0);
-          t += val;
-          return { ...i, stock, val };
-        });
-        setData(rows);
-        setTotal(t);
-        setLoading(false);
-      });
+    const load = async () => {
+      const { data: ingredients } = await supabase
+        .from("ingredients")
+        .select("id, name, unit, cost_per_unit, ingredient_stock_cache(current_stock)")
+        .is("deleted_at", null)
+        .order("name");
+
+      setData(ingredients || []);
+      setLoading(false);
+    };
+    load();
   }, []);
 
-  if (loading) return <div style={s.loading}>Loading…</div>;
+  if (loading) return <div style={office.loading}>Loading…</div>;
 
-  const withCost    = data.filter((r) => r.cost_per_unit);
-  const withoutCost = data.filter((r) => !r.cost_per_unit);
+  const totalValue = data.reduce((s, i) => {
+    const stock = i.ingredient_stock_cache?.current_stock ?? 0;
+    return s + stock * Number(i.cost_per_unit || 0);
+  }, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={s.metricRow}>
-        {[
-          { label: "Total Stock Value",    val: fmtCurrency(total), color: "var(--gold)" },
-          { label: "Ingredients Costed",   val: withCost.length,    color: "#22c55e"    },
-          { label: "Uncosted (no price)",  val: withoutCost.length, color: "var(--muted)" },
-        ].map(({ label, val, color }) => (
-          <div key={label} style={s.metricCard}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color, letterSpacing: "0.04em" }}>{val}</div>
-            <div style={s.metricLabel}>{label}</div>
-          </div>
-        ))}
+      <div style={office.card}>
+        <div style={office.cardHead}>Total Stock Value</div>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 40, color: "var(--gold)", letterSpacing: "0.04em" }}>
+          {fmtCurrency(totalValue)}
+        </div>
       </div>
 
-      <div style={s.card}>
-        <div style={s.cardHead}>Stock Valuation (Current)</div>
-        <table style={{ ...s.table, marginTop: 12 }}>
+      <div style={office.card}>
+        <div style={office.cardHead}>By Ingredient</div>
+        <table style={{ ...table.table, marginTop: 12 }}>
           <thead>
             <tr>
-              {["Ingredient", "Current Stock", "Cost / Unit", "Total Value"].map((h) => <th key={h} style={s.th}>{h}</th>)}
+              {["Ingredient", "Unit", "Stock", "Cost/Unit", "Value"].map((h) => (
+                <th key={h} style={table.th}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {data.sort((a, b) => b.val - a.val).map((row) => (
-              <tr key={row.id}>
-                <td style={{ ...s.td, fontWeight: 600 }}>
-                  {row.name} <span style={{ color: "var(--muted)", fontSize: 11 }}>{row.unit}</span>
-                </td>
-                <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 16 }}>
-                  {Number(row.stock).toFixed(3)}
-                </td>
-                <td style={{ ...s.td, color: row.cost_per_unit ? "var(--gold)" : "var(--muted)" }}>
-                  {row.cost_per_unit ? fmtCurrency(row.cost_per_unit) : "—"}
-                </td>
-                <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 18, color: row.val > 0 ? "var(--gold)" : "var(--muted)" }}>
-                  {row.val > 0 ? fmtCurrency(row.val) : "—"}
-                </td>
-              </tr>
-            ))}
+            {data.map((i) => {
+              const stock = i.ingredient_stock_cache?.current_stock ?? 0;
+              const value = stock * Number(i.cost_per_unit || 0);
+              return (
+                <tr key={i.id}>
+                  <td style={{ ...table.td, fontWeight: 600 }}>{i.name}</td>
+                  <td style={{ ...table.td, color: "var(--muted)" }}>{i.unit}</td>
+                  <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16 }}>{Number(stock).toFixed(3)}</td>
+                  <td style={{ ...table.td, color: "var(--muted)" }}>{i.cost_per_unit ? fmtCurrency(i.cost_per_unit) : "—"}</td>
+                  <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16, color: "var(--gold)" }}>
+                    {value > 0 ? fmtCurrency(value) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -14902,176 +15023,96 @@ function StockValuation() {
 // REPORT 5: Staff Activity
 // ────────────────────────────────────────────────────────────────────────────
 function StaffActivity({ datePreset }) {
-  const [data, setData] = useState({ clerks: [], officeStaff: [] });
+  const [data,    setData]    = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { from, to } = getDateRange(datePreset);
 
-    const [ordersRes, movementsRes] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id, status, confirmed_by, profiles!confirmed_by(username)")
-        .gte("created_at", from)
-        .lte("created_at", to)
-        .not("confirmed_by", "is", null),
-      supabase
-        .from("inventory_movements")
-        .select("id, performed_by, reason, profiles!performed_by(username)")
-        .gte("created_at", from)
-        .lte("created_at", to),
-    ]);
+    const { data: movements } = await supabase
+      .from("inventory_movements")
+      .select("performed_by, performed_by_profile:profiles!performed_by(username), reason, delta, created_at")
+      .gte("created_at", from).lte("created_at", to)
+      .not("performed_by", "is", null);
 
-    // Clerk activity — orders confirmed
-    const clerkMap = {};
-    (ordersRes.data || []).forEach((o) => {
-      const uid = o.confirmed_by;
-      if (!uid) return;
-      clerkMap[uid] = clerkMap[uid] || { username: o.profiles?.username ?? "—", confirmed: 0 };
-      clerkMap[uid].confirmed++;
+    const byStaff = {};
+    (movements || []).forEach((m) => {
+      const key  = m.performed_by;
+      const name = m.performed_by_profile?.username ?? key?.slice(0, 8) ?? "—";
+      if (!byStaff[key]) byStaff[key] = { name, total: 0, byReason: {} };
+      byStaff[key].total += 1;
+      byStaff[key].byReason[m.reason] = (byStaff[key].byReason[m.reason] || 0) + 1;
     });
 
-    // Office activity — movements recorded
-    const officeMap = {};
-    (movementsRes.data || []).forEach((m) => {
-      const uid = m.performed_by;
-      if (!uid) return;
-      officeMap[uid] = officeMap[uid] || { username: m.profiles?.username ?? "—", total: 0, byReason: {} };
-      officeMap[uid].total++;
-      officeMap[uid].byReason[m.reason] = (officeMap[uid].byReason[m.reason] || 0) + 1;
-    });
-
-    setData({
-      clerks:      Object.values(clerkMap).sort((a, b) => b.confirmed - a.confirmed),
-      officeStaff: Object.values(officeMap).sort((a, b) => b.total - a.total),
-    });
+    setData(Object.values(byStaff).sort((a, b) => b.total - a.total));
     setLoading(false);
   }, [datePreset]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={s.loading}>Loading…</div>;
+  if (loading) return <div style={office.loading}>Loading…</div>;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-      <div style={s.card}>
-        <div style={s.cardHead}>Clerk — Orders Confirmed</div>
-        {data.clerks.length === 0 ? (
-          <div style={s.emptyText}>No clerk activity in this period.</div>
-        ) : (
-          <table style={{ ...s.table, marginTop: 12 }}>
-            <thead>
-              <tr>
-                {["Clerk", "Orders Confirmed"].map((h) => <th key={h} style={s.th}>{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {data.clerks.map((c) => (
-                <tr key={c.username}>
-                  <td style={s.td}>@{c.username}</td>
-                  <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 22, color: "#3b82f6" }}>{c.confirmed}</td>
-                </tr>
+    <div style={office.card}>
+      <div style={office.cardHead}>Staff Movement Activity</div>
+      {data.length === 0 ? (
+        <div style={office.emptyLabel}>No staff activity recorded in this period.</div>
+      ) : (
+        <table style={{ ...table.table, marginTop: 12 }}>
+          <thead>
+            <tr>
+              {["Staff Member", "Total Movements", "Purchases", "Adjustments", "Wastage"].map((h) => (
+                <th key={h} style={table.th}>{h}</th>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div style={s.card}>
-        <div style={s.cardHead}>Office — Inventory Movements</div>
-        {data.officeStaff.length === 0 ? (
-          <div style={s.emptyText}>No inventory activity in this period.</div>
-        ) : (
-          <table style={{ ...s.table, marginTop: 12 }}>
-            <thead>
-              <tr>
-                {["User", "Total Movements", "Purchases", "Adjustments", "Wastage"].map((h) => <th key={h} style={s.th}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.name}>
+                <td style={{ ...table.td, fontWeight: 600 }}>@{row.name}</td>
+                <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 20 }}>{row.total}</td>
+                <td style={{ ...table.td, color: "#22c55e" }}>{row.byReason["purchase"] || 0}</td>
+                <td style={{ ...table.td, color: "#3b82f6" }}>{row.byReason["manual_adjustment"] || 0}</td>
+                <td style={{ ...table.td, color: "var(--ember)" }}>
+                  {(row.byReason["wastage"] || 0) + (row.byReason["spoilage"] || 0)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data.officeStaff.map((u) => (
-                <tr key={u.username}>
-                  <td style={s.td}>@{u.username}</td>
-                  <td style={{ ...s.td, fontFamily: "var(--font-display)", fontSize: 20, color: "var(--bone)" }}>{u.total}</td>
-                  <td style={{ ...s.td, color: "#22c55e" }}>{u.byReason["purchase"] || 0}</td>
-                  <td style={{ ...s.td, color: "var(--gold)" }}>{u.byReason["manual_adjustment"] || 0}</td>
-                  <td style={{ ...s.td, color: "var(--ember)" }}>{(u.byReason["wastage"] || 0) + (u.byReason["spoilage"] || 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Shared styles
-// ────────────────────────────────────────────────────────────────────────────
+// ── Local styles (report-specific only) ─────────────────────────────────────
 const s = {
-  page: { minHeight: "100%", background: "var(--smoke)", paddingBottom: 60 },
-  head: {
-    display: "flex", justifyContent: "space-between", alignItems: "flex-end",
-    padding: "28px 24px 20px", borderBottom: "1px solid var(--pit)",
-    flexWrap: "wrap", gap: 16,
-  },
-  eyebrow: {
-    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
-    letterSpacing: "0.35em", textTransform: "uppercase",
-    color: "var(--fire)", marginBottom: 4,
-  },
-  title: {
-    fontFamily: "var(--font-display)", fontSize: "clamp(32px, 5vw, 48px)",
-    letterSpacing: "0.04em", color: "var(--bone)", margin: 0, lineHeight: 1,
-  },
   presetBtn: {
-    fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: "0.15em",
-    textTransform: "uppercase", padding: "6px 12px", borderRadius: 2, cursor: "pointer",
-    transition: "all 0.15s",
+    fontFamily:    "var(--font-body)",
+    fontSize:      12,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    padding:       "6px 12px",
+    borderRadius:  3,
+    cursor:        "pointer",
+    transition:    "all 0.15s",
   },
   reportTab: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "0 14px", height: 40, background: "transparent",
-    border: "none", borderBottom: "2px solid transparent",
-    cursor: "pointer", fontFamily: "var(--font-body)",
-    fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase",
-    whiteSpace: "nowrap", marginBottom: "-1px", transition: "color 0.15s",
-  },
-  metricRow: { display: "flex", gap: 12, flexWrap: "wrap" },
-  metricCard: {
-    background: "var(--ash)", border: "1px solid var(--pit)",
-    borderRadius: 4, padding: "16px 20px", flex: "1 0 140px",
-  },
-  metricLabel: {
-    fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: "0.2em",
-    textTransform: "uppercase", color: "var(--muted)", marginTop: 4,
-  },
-  card: {
-    background: "var(--ash)", border: "1px solid var(--pit)", borderRadius: 4, padding: "20px",
-  },
-  cardHead: {
-    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
-    letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--fire)",
-  },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: {
-    fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700,
-    letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)",
-    padding: "8px 10px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "9px 10px", borderBottom: "1px solid var(--pit)",
-    fontSize: 13, color: "var(--bone)", fontFamily: "var(--font-sans)", verticalAlign: "middle",
-  },
-  loading: {
-    fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)",
-    letterSpacing: "0.2em", padding: 24,
-  },
-  emptyText: {
-    fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)",
-    marginTop: 16, letterSpacing: "0.08em",
+    display:       "inline-flex",
+    alignItems:    "center",
+    gap:           6,
+    padding:       "0 16px",
+    height:        40,
+    background:    "transparent",
+    border:        "none",
+    cursor:        "pointer",
+    fontFamily:    "var(--font-body)",
+    fontSize:      12,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    whiteSpace:    "nowrap",
+    marginBottom:  "-1px",
   },
 };
 
@@ -17182,6 +17223,819 @@ export const header = {
     letterSpacing:'0.2em',
     color:        'var(--fire)',
     textTransform:'uppercase',
+  },
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\forms.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/forms.js
+//  Reusable form-element styles for all pages.
+//  Eliminates duplicate label/input/select patterns.
+// ─────────────────────────────────────────────
+
+// ── Field wrapper ─────────────────────────────────────────────
+export const form = {
+  field: {
+    display:       'flex',
+    flexDirection: 'column',
+    gap:           6,
+  },
+
+  row: {
+    display: 'flex',
+    gap:     12,
+    flexWrap:'wrap',
+  },
+
+  actions: {
+    display:    'flex',
+    gap:        8,
+    alignItems: 'center',
+    marginTop:  8,
+  },
+
+  // ── Labels ──────────────────────────────────
+  label: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+  },
+
+  // ── Input base ──────────────────────────────
+  input: {
+    width:        '100%',
+    padding:      '8px 12px',
+    background:   '#161616',
+    border:       '1px solid var(--pit)',
+    borderRadius: '3px',
+    color:        'var(--bone)',
+    fontFamily:   'var(--font-sans)',
+    fontSize:     14,
+    outline:      'none',
+    boxSizing:    'border-box',
+  },
+
+  inputFocused: {
+    borderColor: 'var(--fire)',
+  },
+
+  inputError: {
+    borderColor: 'var(--ember)',
+  },
+
+  // ── Select ──────────────────────────────────
+  select: {
+    width:        '100%',
+    padding:      '8px 12px',
+    background:   '#161616',
+    border:       '1px solid var(--pit)',
+    borderRadius: '3px',
+    color:        'var(--bone)',
+    fontFamily:   'var(--font-sans)',
+    fontSize:     14,
+    outline:      'none',
+    boxSizing:    'border-box',
+    cursor:       'pointer',
+  },
+
+  // ── Textarea ─────────────────────────────────
+  textarea: {
+    width:        '100%',
+    padding:      '8px 12px',
+    background:   '#161616',
+    border:       '1px solid var(--pit)',
+    borderRadius: '3px',
+    color:        'var(--bone)',
+    fontFamily:   'var(--font-sans)',
+    fontSize:     14,
+    outline:      'none',
+    resize:       'vertical',
+    boxSizing:    'border-box',
+    lineHeight:   1.5,
+  },
+
+  // ── Hint / error text ─────────────────────────
+  hint: {
+    fontFamily:  'var(--font-sans)',
+    fontSize:    12,
+    color:       'var(--muted)',
+    lineHeight:  1.5,
+    margin:      0,
+  },
+
+  error: {
+    color:      'var(--ember)',
+    fontSize:   13,
+    marginTop:  8,
+    fontFamily: 'var(--font-sans)',
+  },
+
+  // ── Form stack (vertical form container) ────
+  stack: {
+    display:       'flex',
+    flexDirection: 'column',
+    gap:           12,
+  },
+
+  // ── Form section title ────────────────────
+  sectionTitle: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color:         'var(--fire)',
+    marginBottom:  4,
+    marginTop:     8,
+  },
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\index.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/index.js
+//  Barrel export — import everything from here:
+//
+//    import { btn, page, table, form, office, badge } from '../styles'
+//
+// ─────────────────────────────────────────────
+
+export * from './theme';
+export * from './components';
+export * from './page';
+export * from './table';
+export * from './forms';
+export * from './office';
+export * from './status';
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\office.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/office.js
+//  Layout and structural styles shared across all
+//  src/pages/office/* and src/components/office/* pages.
+//  Standardizes the panel / sidebar / stat-card / toolbar
+//  patterns that were duplicated on every office page.
+// ─────────────────────────────────────────────
+
+export const office = {
+  // ── Page shell ──────────────────────────────
+  page: {
+    minHeight:  '100%',
+    background: 'var(--smoke)',
+    color:      'var(--bone)',
+    paddingBottom: 60,
+  },
+
+  // ── Page header ─────────────────────────────
+  head: {
+    display:        'flex',
+    justifyContent: 'space-between',
+    alignItems:     'flex-end',
+    padding:        '28px 24px 20px',
+    borderBottom:   '1px solid var(--pit)',
+    flexWrap:       'wrap',
+    gap:            16,
+  },
+
+  eyebrow: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color:         'var(--fire)',
+    marginBottom:  4,
+  },
+
+  title: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      'clamp(28px, 4vw, 44px)',
+    letterSpacing: '0.04em',
+    color:         'var(--bone)',
+    margin:        0,
+    lineHeight:    1,
+  },
+
+  // ── Toolbar (filters, search, buttons row) ──
+  toolbar: {
+    display:     'flex',
+    alignItems:  'center',
+    gap:         8,
+    padding:     '12px 24px',
+    borderBottom:'1px solid var(--pit)',
+    flexWrap:    'wrap',
+  },
+
+  toolbarSearch: {
+    flex:         1,
+    minWidth:     180,
+    maxWidth:     320,
+    padding:      '7px 12px',
+    background:   '#161616',
+    border:       '1px solid var(--pit)',
+    borderRadius: '3px',
+    color:        'var(--bone)',
+    fontFamily:   'var(--font-sans)',
+    fontSize:     13,
+    outline:      'none',
+  },
+
+  toolbarSelect: {
+    padding:      '7px 12px',
+    background:   '#161616',
+    border:       '1px solid var(--pit)',
+    borderRadius: '3px',
+    color:        'var(--bone)',
+    fontFamily:   'var(--font-body)',
+    fontSize:     12,
+    letterSpacing:'0.05em',
+    cursor:       'pointer',
+    outline:      'none',
+  },
+
+  // ── Sidebar + panel layout ───────────────────
+  sidebar: {
+    width:      240,
+    flexShrink: 0,
+    borderRight:'1px solid var(--pit)',
+    padding:    '20px 0',
+    overflowY:  'auto',
+  },
+
+  sidebarItem: {
+    display:       'block',
+    width:         '100%',
+    padding:       '10px 20px',
+    background:    'transparent',
+    border:        'none',
+    borderLeft:    '3px solid transparent',
+    cursor:        'pointer',
+    fontFamily:    'var(--font-body)',
+    fontSize:      14,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+    textAlign:     'left',
+    transition:    'color 0.15s, background 0.15s',
+  },
+
+  sidebarItemActive: {
+    color:       'var(--bone)',
+    background:  'rgba(249,115,22,0.06)',
+    borderLeftColor: 'var(--fire)',
+  },
+
+  panel: {
+    flex:      1,
+    minWidth:  0,
+    padding:   '24px',
+    overflowY: 'auto',
+  },
+
+  content: {
+    padding: '24px',
+  },
+
+  // ── Stat cards row ───────────────────────────
+  statsRow: {
+    display:  'flex',
+    gap:      12,
+    padding:  '20px 24px',
+    flexWrap: 'wrap',
+  },
+
+  statCard: {
+    background:   'var(--ash)',
+    border:       '1px solid var(--pit)',
+    borderRadius: 4,
+    padding:      '16px 20px',
+    minWidth:     120,
+    flex:         '1 0 auto',
+  },
+
+  statValue: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      32,
+    letterSpacing: '0.04em',
+    lineHeight:    1,
+    marginBottom:  4,
+  },
+
+  statLabel: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: '0.25em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+  },
+
+  // ── Card ─────────────────────────────────────
+  card: {
+    background:   'var(--ash)',
+    border:       '1px solid var(--pit)',
+    borderRadius: 4,
+    padding:      '20px',
+  },
+
+  cardHead: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.25em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+    marginBottom:  12,
+  },
+
+  // ── Empty states ─────────────────────────────
+  emptyState: {
+    display:        'flex',
+    flexDirection:  'column',
+    alignItems:     'center',
+    padding:        '60px 24px',
+    textAlign:      'center',
+    gap:            12,
+  },
+
+  emptyLabel: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      13,
+    letterSpacing: '0.08em',
+    color:         'var(--muted)',
+  },
+
+  // ── Loading ───────────────────────────────────
+  loading: {
+    height:         '40vh',
+    display:        'flex',
+    alignItems:     'center',
+    justifyContent: 'center',
+    fontFamily:     'var(--font-body)',
+    fontSize:       13,
+    letterSpacing:  '0.1em',
+    color:          'var(--muted)',
+  },
+
+  // ── Metric row (reports) ──────────────────────
+  metricRow: {
+    display:  'flex',
+    gap:      12,
+    flexWrap: 'wrap',
+  },
+
+  metricCard: {
+    background:   'var(--ash)',
+    border:       '1px solid var(--pit)',
+    borderRadius: 4,
+    padding:      '16px 20px',
+    flex:         '1 0 auto',
+    minWidth:     140,
+  },
+
+  metricLabel: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: '0.25em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+    marginTop:     4,
+  },
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\page.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/page.js
+//  Standardized page / layout primitives.
+//  Replaces duplicated PAGE_STYLES / PAGE / s.page patterns.
+//  All values reference CSS variables from index.css.
+// ─────────────────────────────────────────────
+
+// ── Wrappers ──────────────────────────────────────────────────
+export const page = {
+  // Standard smoke-background page shell
+  wrapper: {
+    minHeight:  '100%',
+    background: 'var(--smoke)',
+    color:      'var(--bone)',
+    paddingBottom: 60,
+  },
+
+  // Full-viewport centering — Login, Register
+  centered: {
+    minHeight:      '100vh',
+    display:        'flex',
+    justifyContent: 'center',
+    alignItems:     'center',
+    background:     'var(--smoke)',
+  },
+
+  // Content column — narrow centered column
+  column: {
+    maxWidth: '600px',
+    margin:   '0 auto',
+    padding:  '32px 16px',
+  },
+
+  // Wide content column — checkout, orders
+  columnWide: {
+    maxWidth: '720px',
+    margin:   '0 auto',
+    padding:  '40px 16px 80px',
+  },
+
+  // Standard padded inner — used inside page.wrapper
+  inner: {
+    padding: '24px',
+  },
+
+  // ── Page header block (eyebrow + title row) ──
+  header: {
+    display:        'flex',
+    justifyContent: 'space-between',
+    alignItems:     'flex-end',
+    padding:        '28px 24px 20px',
+    borderBottom:   '1px solid var(--pit)',
+    flexWrap:       'wrap',
+    gap:            16,
+  },
+
+  // Eyebrow label above the page title
+  eyebrow: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.35em',
+    textTransform: 'uppercase',
+    color:         'var(--fire)',
+    marginBottom:  4,
+  },
+
+  // Primary page title — Bebas Neue display
+  title: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      'clamp(28px, 4vw, 44px)',
+    letterSpacing: '0.04em',
+    color:         'var(--bone)',
+    margin:        0,
+    lineHeight:    1,
+  },
+
+  // Large hero title variant (Landing / auth)
+  titleHero: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      'clamp(40px, 8vw, 64px)',
+    letterSpacing: '0.04em',
+    color:         'var(--bone)',
+    margin:        '0 0 12px',
+    lineHeight:    1,
+  },
+
+  // Subtitle / strapline beneath title
+  sub: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      13,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+    marginBottom:  24,
+  },
+
+  // Fire accent divider bar
+  divider: {
+    width:      48,
+    height:     2,
+    background: 'var(--fire)',
+    margin:     '0 0 20px',
+  },
+
+  dividerCentered: {
+    width:      40,
+    height:     2,
+    background: 'var(--fire)',
+    margin:     '0 auto 16px',
+  },
+
+  // ── Sections ──────────────────────────────────
+  section: {
+    padding: '24px',
+  },
+
+  sectionHead: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    fontWeight:    700,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color:         'var(--fire)',
+    marginBottom:  4,
+  },
+
+  // ── Cards ──────────────────────────────────────
+  card: {
+    background:   'var(--ash)',
+    border:       '1px solid var(--pit)',
+    borderRadius: '4px',
+    padding:      '20px',
+  },
+
+  cardElevated: {
+    background:   'var(--char)',
+    border:       '1px solid var(--coal)',
+    borderRadius: '8px',
+    padding:      '28px',
+    boxShadow:    '0 8px 32px rgba(0,0,0,0.6)',
+  },
+
+  // Auth centered card
+  cardAuth: {
+    width:        '380px',
+    maxWidth:     '100%',
+    padding:      '32px',
+    background:   'var(--ash)',
+    border:       '1px solid var(--pit)',
+    borderRadius: '8px',
+    boxShadow:    '0 8px 32px rgba(0,0,0,0.6)',
+    textAlign:    'center',
+  },
+
+  // ── Grid / Sidebar layouts ─────────────────────
+  grid: {
+    display:             'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap:                 12,
+  },
+
+  gridWide: {
+    display:             'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap:                 16,
+  },
+
+  sidebar: {
+    width:      240,
+    flexShrink: 0,
+    borderRight:'1px solid var(--pit)',
+    padding:    '20px 16px',
+    overflowY:  'auto',
+  },
+
+  content: {
+    flex:      1,
+    minWidth:  0,
+    padding:   '24px',
+    overflowY: 'auto',
+  },
+
+  // ── Empty states ─────────────────────────────
+  emptyState: {
+    display:        'flex',
+    flexDirection:  'column',
+    alignItems:     'center',
+    justifyContent: 'center',
+    padding:        '60px 24px',
+    textAlign:      'center',
+    gap:            12,
+  },
+
+  emptyLabel: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      14,
+    letterSpacing: '0.1em',
+    color:         'var(--muted)',
+  },
+
+  // ── Loading ───────────────────────────────────
+  loading: {
+    height:         '50vh',
+    display:        'flex',
+    alignItems:     'center',
+    justifyContent: 'center',
+    fontFamily:     'var(--font-body)',
+    fontSize:       13,
+    letterSpacing:  '0.1em',
+    color:          'var(--muted)',
+  },
+
+  // ── Toolbar row ────────────────────────────────
+  toolbar: {
+    display:    'flex',
+    alignItems: 'center',
+    gap:        8,
+    padding:    '12px 24px',
+    borderBottom:'1px solid var(--pit)',
+    flexWrap:   'wrap',
+  },
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\status.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/status.js
+//  Centralizes all status badge / pill / indicator styles.
+//  Consolidates badge patterns from components.js, Kitchen,
+//  and office pages into a single module.
+// ─────────────────────────────────────────────
+
+// ── Shared badge base ─────────────────────────────────────────
+const _badgeBase = {
+  display:       'inline-block',
+  padding:       '3px 10px',
+  borderRadius:  '2px',
+  fontFamily:    'var(--font-body)',
+  fontSize:      11,
+  fontWeight:    700,
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase',
+  color:         '#000',
+  whiteSpace:    'nowrap',
+};
+
+// ── Order status badges ───────────────────────────────────────
+export const badge = {
+  pending:   { ..._badgeBase, background: '#f59e0b' },
+  confirmed: { ..._badgeBase, background: '#3b82f6', color: '#fff' },
+  ready:     { ..._badgeBase, background: '#a855f7', color: '#fff' },
+  completed: { ..._badgeBase, background: '#22c55e' },
+  cancelled: { ..._badgeBase, background: '#ef4444', color: '#fff' },
+};
+
+// ── Stock status badges ───────────────────────────────────────
+export const stockBadge = {
+  ok: {
+    ..._badgeBase,
+    background: 'rgba(34,197,94,0.15)',
+    color:      '#22c55e',
+  },
+  low: {
+    ..._badgeBase,
+    background: 'rgba(245,158,11,0.2)',
+    color:      'var(--gold)',
+  },
+  out: {
+    ..._badgeBase,
+    background: 'var(--ember)',
+    color:      '#fff',
+  },
+};
+
+// ── Movement reason pills ─────────────────────────────────────
+const _reasonBase = { ..._badgeBase, fontSize: 10, padding: '2px 8px' };
+
+export const reasonBadge = {
+  purchase:          { ..._reasonBase, background: 'rgba(34,197,94,0.15)',  color: '#22c55e'        },
+  manual_adjustment: { ..._reasonBase, background: 'rgba(59,130,246,0.15)', color: '#3b82f6'        },
+  wastage:           { ..._reasonBase, background: 'rgba(220,38,38,0.15)',  color: 'var(--ember)'   },
+  spoilage:          { ..._reasonBase, background: 'rgba(220,38,38,0.15)',  color: 'var(--ember)'   },
+  order_consumption: { ..._reasonBase, background: 'rgba(249,115,22,0.15)', color: 'var(--fire)'    },
+  opening_stock:     { ..._reasonBase, background: 'rgba(245,158,11,0.15)', color: 'var(--gold)'    },
+  transfer_in:       { ..._reasonBase, background: 'rgba(168,85,247,0.15)', color: '#a855f7'        },
+  transfer_out:      { ..._reasonBase, background: 'rgba(168,85,247,0.15)', color: '#a855f7'        },
+  reconciliation:    { ..._reasonBase, background: 'rgba(107,114,128,0.2)', color: 'var(--muted)'   },
+};
+
+// ── Color map helpers (for dynamic status lookups) ────────────
+export const STATUS_COLORS = {
+  pending:   'var(--gold)',
+  confirmed: '#3b82f6',
+  ready:     '#a855f7',
+  completed: '#22c55e',
+  cancelled: 'var(--ember)',
+};
+
+export const STOCK_COLORS = {
+  ok:  '#22c55e',
+  low: 'var(--gold)',
+  out: 'var(--ember)',
+};
+
+===== FILE: C:\Users\tshep\Rooialty\src\styles\table.js =====
+
+// ─────────────────────────────────────────────
+//  src/styles/table.js
+//  Reusable table styles for all office/admin pages.
+//  Eliminates the duplicated s.table / s.th / s.td pattern
+//  found across every office page.
+// ─────────────────────────────────────────────
+
+export const table = {
+  // Scrollable table wrapper
+  wrapper: {
+    width:      '100%',
+    overflowX:  'auto',
+    padding:    '0 24px 24px',
+  },
+
+  // Table element itself
+  table: {
+    width:           '100%',
+    borderCollapse:  'collapse',
+  },
+
+  // Table header cell
+  th: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: '0.25em',
+    textTransform: 'uppercase',
+    color:         'var(--muted)',
+    padding:       '10px 12px',
+    textAlign:     'left',
+    borderBottom:  '1px solid var(--pit)',
+    whiteSpace:    'nowrap',
+  },
+
+  // Table data cell
+  td: {
+    padding:       '10px 12px',
+    borderBottom:  '1px solid var(--pit)',
+    fontSize:      13,
+    color:         'var(--bone)',
+    fontFamily:    'var(--font-sans)',
+    verticalAlign: 'middle',
+  },
+
+  // Table data cell — compact variant
+  tdSm: {
+    padding:       '8px 10px',
+    borderBottom:  '1px solid var(--pit)',
+    fontSize:      13,
+    color:         'var(--bone)',
+    fontFamily:    'var(--font-sans)',
+    verticalAlign: 'middle',
+  },
+
+  // Row — clickable / hover
+  row: {
+    cursor:     'pointer',
+    transition: 'background 0.1s',
+  },
+
+  // Actions cell — right-aligned buttons
+  actions: {
+    display:    'flex',
+    alignItems: 'center',
+    gap:        6,
+    justifyContent: 'flex-end',
+  },
+
+  // Display value in Bebas Neue
+  valDisplay: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      18,
+    letterSpacing: '0.04em',
+    color:         'var(--bone)',
+  },
+
+  valGold: {
+    fontFamily:    'var(--font-display)',
+    fontSize:      18,
+    letterSpacing: '0.04em',
+    color:         'var(--gold)',
+  },
+
+  // Muted secondary text inside a cell
+  sub: {
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    color:         'var(--muted)',
+    letterSpacing: '0.05em',
+    marginTop:     2,
+  },
+
+  // Ghost action button (used in table action cells)
+  actionBtn: {
+    background:    'transparent',
+    border:        '1px solid var(--pit)',
+    borderRadius:  2,
+    color:         'var(--fire)',
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    padding:       '5px 12px',
+    cursor:        'pointer',
+  },
+
+  ghostBtn: {
+    background:    'transparent',
+    border:        '1px solid var(--pit)',
+    borderRadius:  3,
+    color:         'var(--muted)',
+    fontFamily:    'var(--font-body)',
+    fontSize:      11,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    padding:       '6px 14px',
+    cursor:        'pointer',
   },
 };
 

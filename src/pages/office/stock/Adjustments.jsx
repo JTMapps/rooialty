@@ -5,7 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import useAuth from "../../../hooks/useAuth";
 import IngredientPicker from "../../../components/office/IngredientPicker";
-import { btn, text } from "../../../styles/components";
+import { btn } from "../../../styles/components";
+
+// ── Inline feedback styles (avoids undefined text.error) ──────
+const msgError   = { color: "var(--ember)", fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
+const msgSuccess = { color: "#22c55e",      fontSize: 13, marginTop: 8, fontFamily: "var(--font-sans)" };
 
 const fmt = (d) =>
   new Date(d).toLocaleString("en-ZA", {
@@ -65,7 +69,6 @@ export default function Adjustments() {
     return () => supabase.removeChannel(ch);
   }, [loadRecent]);
 
-  // Load selected ingredient details
   useEffect(() => {
     if (!ingredientId) { setCurrentStock(null); setSelectedUnit(""); return; }
     supabase
@@ -180,8 +183,8 @@ export default function Adjustments() {
           />
         </div>
 
-        {error   && <div style={text.error}>{error}</div>}
-        {success && <div style={{ ...text.error, color: "#22c55e" }}>{success}</div>}
+        {error   && <div style={msgError}>{error}</div>}
+        {success && <div style={msgSuccess}>{success}</div>}
 
         <button
           className="btn-primary"
@@ -252,100 +255,35 @@ export default function Adjustments() {
 }
 
 const s = {
-  wrap: {
-    display: "flex",
-    gap: 32,
-    flexWrap: "wrap",
-    alignItems: "flex-start",
-  },
-  formSide: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    minWidth: 320,
-    maxWidth: 480,
-    flex: "0 0 380px",
-  },
-  recentSide: {
-    flex: 1,
-    minWidth: 0,
-  },
+  wrap:       { display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" },
+  formSide:   { display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 480, flex: "0 0 380px" },
+  recentSide: { flex: 1, minWidth: 0 },
   sectionHead: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color: "var(--fire)",
-    marginBottom: 4,
+    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
+    letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--fire)", marginBottom: 4,
   },
-  hint: {
-    fontFamily: "var(--font-sans)",
-    fontSize: 12,
-    color: "var(--muted)",
-    lineHeight: 1.5,
-    margin: 0,
-  },
-  stockContext: {
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    color: "var(--muted)",
-    letterSpacing: "0.05em",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
+  hint:         { fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, margin: 0 },
+  stockContext: { fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", letterSpacing: "0.05em" },
+  field:        { display: "flex", flexDirection: "column", gap: 6 },
   label: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
+    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 700,
+    letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--muted)",
   },
   input: {
-    width: "100%",
-    padding: "8px 12px",
-    background: "#161616",
-    border: "1px solid var(--pit)",
-    borderRadius: "3px",
-    color: "var(--bone)",
-    fontFamily: "var(--font-sans)",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
+    width: "100%", padding: "8px 12px", background: "#161616",
+    border: "1px solid var(--pit)", borderRadius: "3px",
+    color: "var(--bone)", fontFamily: "var(--font-sans)", fontSize: 14,
+    outline: "none", boxSizing: "border-box",
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
+  table:  { width: "100%", borderCollapse: "collapse" },
   th: {
-    fontFamily: "var(--font-body)",
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.25em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
-    padding: "8px 10px",
-    textAlign: "left",
-    borderBottom: "1px solid var(--pit)",
-    whiteSpace: "nowrap",
+    fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700,
+    letterSpacing: "0.25em", textTransform: "uppercase", color: "var(--muted)",
+    padding: "8px 10px", textAlign: "left", borderBottom: "1px solid var(--pit)", whiteSpace: "nowrap",
   },
   td: {
-    padding: "9px 10px",
-    borderBottom: "1px solid var(--pit)",
-    fontSize: 13,
-    color: "var(--bone)",
-    fontFamily: "var(--font-sans)",
-    verticalAlign: "middle",
+    padding: "9px 10px", borderBottom: "1px solid var(--pit)",
+    fontSize: 13, color: "var(--bone)", fontFamily: "var(--font-sans)", verticalAlign: "middle",
   },
-  empty: {
-    fontFamily: "var(--font-body)",
-    fontSize: 13,
-    color: "var(--muted)",
-    letterSpacing: "0.08em",
-    marginTop: 12,
-  },
+  empty: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted)", letterSpacing: "0.08em", marginTop: 12 },
 };

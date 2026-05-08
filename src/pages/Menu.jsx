@@ -4,13 +4,14 @@ import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import { btn, text } from "../styles/components";
+import { page } from "../styles/page";
 
 const CATEGORY_ICONS = {
-  "URBAN KOTAS":   "🌯",
-  "ROOIALTY MEALS":"👑",
-  "TO SHARE":      "🤝",
-  "WING BAR":      "🍗",
-  "COLD SERVES":   "🧊",
+  "URBAN KOTAS":    "🌯",
+  "ROOIALTY MEALS": "👑",
+  "TO SHARE":       "🤝",
+  "WING BAR":       "🍗",
+  "COLD SERVES":    "🧊",
 };
 
 const CATEGORY_ORDER = [
@@ -25,13 +26,12 @@ export default function Menu() {
   const { user } = useAuth();
   const navigate  = useNavigate();
 
-  const [grouped, setGrouped]   = useState({});
-  const [cart, setCart]         = useState(null);
-  const [quantities, setQty]    = useState({});   // itemId → qty in cart
-  const [loading, setLoading]   = useState(true);
-  const [adding, setAdding]     = useState(null);  // itemId being added
+  const [grouped,    setGrouped]  = useState({});
+  const [cart,       setCart]     = useState(null);
+  const [quantities, setQty]      = useState({});
+  const [loading,    setLoading]  = useState(true);
+  const [adding,     setAdding]   = useState(null);
 
-  // ── Load items + active cart ──────────────────────────────────
   useEffect(() => {
     loadMenu();
     if (user) loadCart();
@@ -78,16 +78,13 @@ export default function Menu() {
     setQty(qtyMap);
   };
 
-  // ── Cart helpers ──────────────────────────────────────────────
   const ensureCart = async () => {
     if (cart) return cart;
-
     const { data: newCart } = await supabase
       .from("carts")
       .insert([{ user_id: user.id }])
       .select()
       .single();
-
     setCart(newCart);
     return newCart;
   };
@@ -107,8 +104,7 @@ export default function Menu() {
         quantity: 1,
       });
     } else {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .update({ quantity: current + 1 })
         .eq("cart_id", activeCart.id)
         .eq("item_id", item.id);
@@ -124,14 +120,12 @@ export default function Menu() {
     if (current === 0) return;
 
     if (current === 1) {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .delete()
         .eq("cart_id", cart.id)
         .eq("item_id", item.id);
     } else {
-      await supabase
-        .from("cart_items")
+      await supabase.from("cart_items")
         .update({ quantity: current - 1 })
         .eq("cart_id", cart.id)
         .eq("item_id", item.id);
@@ -142,17 +136,16 @@ export default function Menu() {
 
   const cartCount = Object.values(quantities).reduce((a, b) => a + b, 0);
 
-  // ── Render ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={s.loadingWrap}>
+      <div style={page.loading}>
         <span className="spinner" />
       </div>
     );
   }
 
   return (
-    <div style={s.page}>
+    <div style={page.wrapper}>
 
       {/* Sticky cart bar */}
       {cartCount > 0 && (
@@ -176,9 +169,9 @@ export default function Menu() {
             <div style={s.divider} />
 
             {/* Items grid */}
-            <div style={s.grid}>
+            <div style={page.grid}>
               {grouped[cat].map((item) => {
-                const qty = quantities[item.id] || 0;
+                const qty      = quantities[item.id] || 0;
                 const isAdding = adding === item.id;
 
                 return (
@@ -225,8 +218,6 @@ export default function Menu() {
 }
 
 const s = {
-  page:       { minHeight: "100vh", background: "var(--smoke)", paddingBottom: 60 },
-  loadingWrap:{ height: "60vh", display: "flex", alignItems: "center", justifyContent: "center" },
   inner:      { maxWidth: 720, margin: "0 auto", padding: "24px 16px" },
 
   cartBar: {
@@ -259,20 +250,15 @@ const s = {
   },
   divider: { width: "100%", height: 1, background: "var(--pit)", marginBottom: 16 },
 
-  grid: {
-    display:             "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap:                 12,
-  },
   itemCard: {
-    background:   "var(--ash)",
-    border:       "1px solid var(--pit)",
-    borderRadius: "4px",
-    padding:      "16px",
-    display:      "flex",
-    flexDirection:"column",
-    gap:          12,
-    transition:   "border-color 0.15s",
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "4px",
+    padding:       "16px",
+    display:       "flex",
+    flexDirection: "column",
+    gap:           12,
+    transition:    "border-color 0.15s",
   },
   itemTop: {
     display:        "flex",
@@ -303,9 +289,9 @@ const s = {
     marginTop:      "auto",
   },
   qtyRow: {
-    display:     "flex",
-    alignItems:  "center",
-    gap:         8,
+    display:    "flex",
+    alignItems: "center",
+    gap:        8,
   },
   qtyNum: {
     fontFamily: "var(--font-display)",

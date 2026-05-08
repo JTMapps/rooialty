@@ -1,7 +1,10 @@
+// src/pages/Login.jsx
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { btn, card, input, layout, text } from "../styles/components";
+import { btn, input } from "../styles/components";
+import { page } from "../styles/page";
+import { form } from "../styles/forms";
 
 export default function Login() {
   const [email,    setEmail]    = useState("");
@@ -27,27 +30,26 @@ export default function Login() {
       .eq("id", data.user.id)
       .maybeSingle();
 
-    // Clerks home is /counter (walk-in panel), users home is /menu
     if (profile?.role === "clerk")  { navigate("/counter", { replace: true }); return; }
     if (profile?.role === "office") { navigate("/office",  { replace: true }); return; }
     navigate("/menu", { replace: true });
-      };
+  };
 
-    const inputStyle = (field) => ({
-      ...input.base,
-      ...(focused === field ? input.focused : {}),
-    });
+  const inputStyle = (field) => ({
+    ...input.base,
+    ...(focused === field ? input.focused : {}),
+  });
 
   return (
-    <div style={layout.centered}>
-      <div style={card.auth}>
+    <div style={page.centered}>
+      <div style={page.cardAuth}>
 
-        <div style={s.eyebrow}>Est. in the Streets</div>
+        <div style={page.eyebrow}>Est. in the Streets</div>
         <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
-        <div style={s.divider} />
+        <div style={page.dividerCentered} />
         <p style={s.subtitle}>Login to continue</p>
 
-        <form onSubmit={handleLogin} style={s.form}>
+        <form onSubmit={handleLogin} style={form.stack}>
           <input
             style={inputStyle("email")}
             className="input-base"
@@ -79,13 +81,13 @@ export default function Login() {
           </button>
         </form>
 
-        {error && <p style={text.error}>{error}</p>}
+        {error && <p style={form.error}>{error}</p>}
 
         <p style={s.linkText}>
           Don't have an account?{" "}
           <span
             onClick={() => navigate("/register", { replace: true })}
-            style={text.link}
+            style={s.link}
           >
             Register
           </span>
@@ -97,26 +99,12 @@ export default function Login() {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      "11px",
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color:         "var(--fire)",
-    marginBottom:  "6px",
-  },
   title: {
     fontFamily:    "var(--font-display)",
     fontSize:      "56px",
     lineHeight:    1,
     letterSpacing: "0.04em",
     margin:        "0 0 12px",
-  },
-  divider: {
-    width:      "40px",
-    height:     "2px",
-    background: "var(--fire)",
-    margin:     "0 auto 16px",
   },
   subtitle: {
     fontFamily:    "var(--font-body)",
@@ -126,16 +114,16 @@ const s = {
     color:         "var(--muted)",
     marginBottom:  "24px",
   },
-  form: {
-    display:       "flex",
-    flexDirection: "column",
-    gap:           "10px",
-  },
   linkText: {
     marginTop:     "20px",
     fontSize:      "13px",
     color:         "var(--muted)",
     fontFamily:    "var(--font-body)",
     letterSpacing: "0.05em",
+  },
+  link: {
+    color:          "var(--fire)",
+    cursor:         "pointer",
+    textDecoration: "none",
   },
 };
