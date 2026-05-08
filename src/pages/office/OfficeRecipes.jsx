@@ -1,6 +1,4 @@
 // src/pages/office/OfficeRecipes.jsx
-// Two-panel layout: item list (left) + BOM editor (right)
-// On mobile: stacked with item list on top
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
@@ -42,6 +40,7 @@ export default function OfficeRecipes() {
       `)
       .eq("item_id", itemId)
       .is("deleted_at", null);
+
     setBom(data || []);
   };
 
@@ -63,11 +62,11 @@ export default function OfficeRecipes() {
   };
 
   const handleRemoveIngredient = async (lineId) => {
-    // Soft-delete the BOM line
     await supabase
       .from("item_ingredients")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", lineId);
+
     loadBom(selectedItemId);
   };
 
@@ -79,23 +78,13 @@ export default function OfficeRecipes() {
       {/* Left panel: item list */}
       <div style={leftPanelStyle}>
         <div style={{ padding: "20px 16px 12px", borderBottom: "1px solid var(--pit)" }}>
-          <div
-                style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: "0.35em",
-                    textTransform: "uppercase",
-                    color: "var(--fire)",
-                    marginBottom: 4,
-                }}
-                >
-                Select Item
-                </div>
+          <div style={PAGE_STYLES.eyebrow}>Select Item</div>
         </div>
+
         <div style={{ overflowY: "auto", flex: 1 }}>
           {items.map((item) => {
             const a = availability[item.id];
+
             return (
               <button
                 key={item.id}
@@ -118,6 +107,7 @@ export default function OfficeRecipes() {
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--bone)", flex: 1, letterSpacing: "0.04em" }}>
                   {item.name}
                 </span>
+
                 {a && (
                   <span style={{
                     fontFamily:    "var(--font-body)",
@@ -147,9 +137,88 @@ export default function OfficeRecipes() {
           </div>
         ) : (
           <div style={{ padding: "24px" }}>
-            {/* ... BOM table + add ingredient form ... */}
-            {/* Shows bom lines, each with ingredient name, qty, unit, servings possible, remove button */}
-            {/* Shows add ingredient form below the table */}
+
+            {/* BOM LIST */}
+            {bom.length === 0 ? (
+              <p style={{ ...text.muted, letterSpacing: "0.08em" }}>
+                No ingredients added yet
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {bom.map((line) => {
+                  const ing = line.ingredient;
+                  const stock = ing?.ingredient_stock_cache?.[0]?.current_stock || 0;
+
+                  const possibleServings =
+                    line.quantity_required > 0
+                      ? Math.floor(stock / line.quantity_required)
+                      : 0;
+
+                  return (
+                    <div
+                      key={line.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        border: "1px solid var(--pit)",
+                        padding: "10px 12px",
+                        borderRadius: 6,
+                        background: "var(--ash)",
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--bone)" }}>
+                          {ing?.name}
+                        </span>
+
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                          {line.quantity_required} {ing?.unit} • {possibleServings} possible
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleRemoveIngredient(line.id)}
+                        style={btn.ghost}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ADD INGREDIENT */}
+            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+              <IngredientPicker
+                value={addIngredientId}
+                onChange={setAddIngredientId}
+              />
+
+              <input
+                type="number"
+                value={addQty}
+                onChange={(e) => setAddQty(e.target.value)}
+                placeholder="Quantity required"
+                style={{
+                  padding: "10px 12px",
+                  border: "1px solid var(--pit)",
+                  borderRadius: 6,
+                  background: "var(--ash)",
+                  color: "var(--bone)",
+                }}
+              />
+
+              <button
+                onClick={handleAddIngredient}
+                disabled={saving}
+                style={btn.primary}
+              >
+                {saving ? "Adding..." : "Add Ingredient"}
+              </button>
+            </div>
+
           </div>
         )}
       </div>
@@ -167,4 +236,13 @@ const leftPanelStyle = {
   height:      "calc(100vh - 120px)",
   position:    "sticky",
   top:         0,
+};
+
+const PAGE_STYLES = {
+  eyebrow: {
+    fontSize: 11,
+    letterSpacing: "0.2em",
+    color: "var(--muted)",
+    textTransform: "uppercase",
+  },
 };
