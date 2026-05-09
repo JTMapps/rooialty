@@ -16,6 +16,20 @@ import Checkout from "./pages/Checkout";
 import Counter  from "./pages/Counter";   // walk-in order menu  → /counter
 import Kitchen  from "./pages/Kitchen";   // order tracking panel → /clerk
 
+import OfficeLayout from "./components/office/OfficeLayout";
+import OfficeDashboard      from "./pages/office/OfficeDashboard";
+import OfficeOrders         from "./pages/office/OfficeOrders";
+import OfficeMenuItems      from "./pages/office/OfficeMenuItems";
+import OfficeIngredients    from "./pages/office/OfficeIngredients";
+import OfficeRecipes        from "./pages/office/OfficeRecipes";
+import OfficeStock          from "./pages/office/OfficeStock";
+import OfficeReconciliation from "./pages/office/OfficeReconciliation";
+import OfficeLedger         from "./pages/office/OfficeLedger";
+import OfficeReports        from "./pages/office/OfficeReports";
+import OfficeStaff          from "./pages/office/OfficeStaff";
+
+
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -53,6 +67,28 @@ export default function App() {
             element={<RoleGuard allow={["clerk"]}><Kitchen /></RoleGuard>}
           />
 
+        </Route>
+
+        {/* Office only — nested under /office with OfficeLayout as shell */}
+        <Route
+          path="/office"
+          element={
+            <RoleGuard allow={["office"]}>
+              <OfficeLayout />
+            </RoleGuard>
+          }
+        >
+          <Route index          element={<OfficeDashboard />}      />
+          <Route path="orders"  element={<OfficeOrders />}         />
+          <Route path="menu"    element={<OfficeMenuItems />}       />
+          <Route path="ingredients" element={<OfficeIngredients />} />
+          <Route path="recipes" element={<OfficeRecipes />}        />
+          <Route path="stock"   element={<OfficeStock />}          />
+          <Route path="reconciliation" element={<OfficeReconciliation />} />
+          <Route path="ledger"  element={<OfficeLedger />}         />
+          <Route path="reports" element={<OfficeReports />}        />
+          <Route path="messages" element={<Messages />}            />
+          <Route path="staff"   element={<OfficeStaff />}          />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

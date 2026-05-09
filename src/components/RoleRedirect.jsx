@@ -12,8 +12,8 @@ export default function RoleRedirect() {
     );
   }
 
-  if (role === "clerk") return <Navigate to="/counter" replace />;
-
+  if (role === "clerk")  return <Navigate to="/counter" replace />;
+  if (role === "office") return <Navigate to="/office"  replace />;
   return <Navigate to="/menu" replace />;
 }
 

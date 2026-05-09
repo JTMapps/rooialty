@@ -4,17 +4,17 @@ import useAuth from "../hooks/useAuth";
 export default function RoleGuard({ children, allow = [] }) {
   const { user, role, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div style={styles.loader}>Loading...</div>
-    );
-  }
+  // Still loading auth state
+  if (loading) return <div style={styles.loader}>Loading...</div>;
 
+  // Not logged in
   if (!user) return <Navigate to="/login" replace />;
 
-  if (allow.length > 0 && !allow.includes(role)) {
-    return <Navigate to="/" replace />;
-  }
+  // Logged in but entity context not yet resolved (hook still in flight)
+  if (user && role === null) return <div style={styles.loader}>Loading...</div>;
+
+  // Role resolved but not allowed
+  if (allow.length > 0 && !allow.includes(role)) return <Navigate to="/" replace />;
 
   return children;
 }

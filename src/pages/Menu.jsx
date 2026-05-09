@@ -1,16 +1,19 @@
 // src/pages/Menu.jsx
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
-import { btn, text } from "../styles/components";
+// REFACTORED: now uses useCart (via CartContext) and useMenu hook.
+// All direct supabase calls removed — zero duplicate logic.
+
+import { useNavigate }       from "react-router-dom";
+import { useCartContext }     from "../context/CartContext";
+import useMenu                from "../hooks/useMenu";
+import { btn, text }          from "../styles/components";
+import { page }               from "../styles/page";
 
 const CATEGORY_ICONS = {
-  "URBAN KOTAS":   "🌯",
-  "ROOIALTY MEALS":"👑",
-  "TO SHARE":      "🤝",
-  "WING BAR":      "🍗",
-  "COLD SERVES":   "🧊",
+  "URBAN KOTAS":    "🌯",
+  "ROOIALTY MEALS": "👑",
+  "TO SHARE":       "🤝",
+  "WING BAR":       "🍗",
+  "COLD SERVES":    "🧊",
 };
 
 const CATEGORY_ORDER = [
@@ -22,137 +25,22 @@ const CATEGORY_ORDER = [
 ];
 
 export default function Menu() {
-  const { user } = useAuth();
-  const navigate  = useNavigate();
+  const navigate                                   = useNavigate();
+  const { grouped, loading: menuLoading }          = useMenu();
+  const { quantities, cartCount, addItem, removeItem, loading: cartLoading } = useCartContext();
 
-  const [grouped, setGrouped]   = useState({});
-  const [cart, setCart]         = useState(null);
-  const [quantities, setQty]    = useState({});   // itemId → qty in cart
-  const [loading, setLoading]   = useState(true);
-  const [adding, setAdding]     = useState(null);  // itemId being added
+  const loading = menuLoading || cartLoading;
 
-  // ── Load items + active cart ──────────────────────────────────
-  useEffect(() => {
-    loadMenu();
-    if (user) loadCart();
-  }, [user]);
-
-  const loadMenu = async () => {
-    const { data, error } = await supabase
-      .from("items")
-      .select("id, name, price, item_type, category, in_stock")
-      .is("deleted_at", null)
-      .order("category")
-      .order("name");
-
-    if (error || !data) return;
-
-    const g = {};
-    data.forEach((item) => {
-      const key = item.item_type === "drink" ? "COLD SERVES" : (item.category ?? "OTHER");
-      if (!g[key]) g[key] = [];
-      g[key].push(item);
-    });
-    setGrouped(g);
-    setLoading(false);
-  };
-
-  const loadCart = async () => {
-    const { data: existingCart } = await supabase
-      .from("carts")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (!existingCart) return;
-    setCart(existingCart);
-
-    const { data: cartItems } = await supabase
-      .from("cart_items")
-      .select("item_id, quantity")
-      .eq("cart_id", existingCart.id);
-
-    const qtyMap = {};
-    (cartItems || []).forEach((ci) => { qtyMap[ci.item_id] = ci.quantity; });
-    setQty(qtyMap);
-  };
-
-  // ── Cart helpers ──────────────────────────────────────────────
-  const ensureCart = async () => {
-    if (cart) return cart;
-
-    const { data: newCart } = await supabase
-      .from("carts")
-      .insert([{ user_id: user.id }])
-      .select()
-      .single();
-
-    setCart(newCart);
-    return newCart;
-  };
-
-  const addToCart = async (item) => {
-    if (!user) { navigate("/login"); return; }
-    if (!item.in_stock) return;
-
-    setAdding(item.id);
-    const activeCart = await ensureCart();
-    const current    = quantities[item.id] || 0;
-
-    if (current === 0) {
-      await supabase.from("cart_items").insert({
-        cart_id:  activeCart.id,
-        item_id:  item.id,
-        quantity: 1,
-      });
-    } else {
-      await supabase
-        .from("cart_items")
-        .update({ quantity: current + 1 })
-        .eq("cart_id", activeCart.id)
-        .eq("item_id", item.id);
-    }
-
-    setQty((prev) => ({ ...prev, [item.id]: current + 1 }));
-    setAdding(null);
-  };
-
-  const removeFromCart = async (item) => {
-    if (!cart) return;
-    const current = quantities[item.id] || 0;
-    if (current === 0) return;
-
-    if (current === 1) {
-      await supabase
-        .from("cart_items")
-        .delete()
-        .eq("cart_id", cart.id)
-        .eq("item_id", item.id);
-    } else {
-      await supabase
-        .from("cart_items")
-        .update({ quantity: current - 1 })
-        .eq("cart_id", cart.id)
-        .eq("item_id", item.id);
-    }
-
-    setQty((prev) => ({ ...prev, [item.id]: current - 1 }));
-  };
-
-  const cartCount = Object.values(quantities).reduce((a, b) => a + b, 0);
-
-  // ── Render ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={s.loadingWrap}>
+      <div style={page.loading}>
         <span className="spinner" />
       </div>
     );
   }
 
   return (
-    <div style={s.page}>
+    <div style={page.wrapper}>
 
       {/* Sticky cart bar */}
       {cartCount > 0 && (
@@ -176,10 +64,9 @@ export default function Menu() {
             <div style={s.divider} />
 
             {/* Items grid */}
-            <div style={s.grid}>
+            <div style={page.grid}>
               {grouped[cat].map((item) => {
                 const qty = quantities[item.id] || 0;
-                const isAdding = adding === item.id;
 
                 return (
                   <div key={item.id} style={{ ...s.itemCard, opacity: item.in_stock ? 1 : 0.45 }}>
@@ -195,21 +82,17 @@ export default function Menu() {
 
                       {qty === 0 ? (
                         <button
-                          style={{
-                            ...btn.secondary,
-                            ...btn.sm,
-                            opacity: isAdding ? 0.6 : 1,
-                          }}
-                          onClick={() => addToCart(item)}
-                          disabled={!item.in_stock || isAdding}
+                          style={{ ...btn.secondary, ...btn.sm }}
+                          onClick={() => addItem(item)}
+                          disabled={!item.in_stock}
                         >
-                          {isAdding ? "…" : "Add"}
+                          Add
                         </button>
                       ) : (
                         <div style={s.qtyRow}>
-                          <button style={btn.qty} onClick={() => removeFromCart(item)}>−</button>
+                          <button style={btn.qty} onClick={() => removeItem(item)}>−</button>
                           <span style={s.qtyNum}>{qty}</span>
-                          <button style={btn.qty} onClick={() => addToCart(item)}>+</button>
+                          <button style={btn.qty} onClick={() => addItem(item)}>+</button>
                         </div>
                       )}
                     </div>
@@ -225,8 +108,6 @@ export default function Menu() {
 }
 
 const s = {
-  page:       { minHeight: "100vh", background: "var(--smoke)", paddingBottom: 60 },
-  loadingWrap:{ height: "60vh", display: "flex", alignItems: "center", justifyContent: "center" },
   inner:      { maxWidth: 720, margin: "0 auto", padding: "24px 16px" },
 
   cartBar: {
@@ -259,20 +140,15 @@ const s = {
   },
   divider: { width: "100%", height: 1, background: "var(--pit)", marginBottom: 16 },
 
-  grid: {
-    display:             "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap:                 12,
-  },
   itemCard: {
-    background:   "var(--ash)",
-    border:       "1px solid var(--pit)",
-    borderRadius: "4px",
-    padding:      "16px",
-    display:      "flex",
-    flexDirection:"column",
-    gap:          12,
-    transition:   "border-color 0.15s",
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "4px",
+    padding:       "16px",
+    display:       "flex",
+    flexDirection: "column",
+    gap:           12,
+    transition:    "border-color 0.15s",
   },
   itemTop: {
     display:        "flex",
@@ -303,9 +179,9 @@ const s = {
     marginTop:      "auto",
   },
   qtyRow: {
-    display:     "flex",
-    alignItems:  "center",
-    gap:         8,
+    display:    "flex",
+    alignItems: "center",
+    gap:        8,
   },
   qtyNum: {
     fontFamily: "var(--font-display)",

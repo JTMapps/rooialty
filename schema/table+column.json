@@ -1,0 +1,1289 @@
+[
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "available_from",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "available_to",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "clerk_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "delivery_types",
+    "data_type": "delivery_type[]",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "delivery_type[] NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
+    "column_name": "note",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "column_name": "cart_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "column_name": "item_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "cart_items",
+    "column_name": "quantity",
+    "data_type": "integer",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "integer NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "delivery_address",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "delivery_type",
+    "data_type": "delivery_type",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "delivery_type NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "payment_option",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "scheduled_for",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "status",
+    "data_type": "cart_status",
+    "nullability": "NOT NULL",
+    "column_default": "'active'::cart_status",
+    "column_definition": "cart_status NOT NULL DEFAULT 'active'::cart_status"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "domain",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "true",
+    "column_definition": "boolean NOT NULL DEFAULT true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "name",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "owner_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "settings",
+    "data_type": "jsonb",
+    "nullability": "NOT NULL",
+    "column_default": "'{}'::jsonb",
+    "column_definition": "jsonb NOT NULL DEFAULT '{}'::jsonb"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "column_name": "slug",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "true",
+    "column_definition": "boolean NOT NULL DEFAULT true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "joined_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "profile_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "column_name": "role",
+    "data_type": "user_role",
+    "nullability": "NOT NULL",
+    "column_default": "'user'::user_role",
+    "column_definition": "user_role NOT NULL DEFAULT 'user'::user_role"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredient_stock_cache",
+    "column_name": "current_stock",
+    "data_type": "numeric(10,4)",
+    "nullability": "NOT NULL",
+    "column_default": "0",
+    "column_definition": "numeric(10,4) NOT NULL DEFAULT 0"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredient_stock_cache",
+    "column_name": "ingredient_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredient_stock_cache",
+    "column_name": "last_updated_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "cost_per_unit",
+    "data_type": "numeric(10,4)",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "description",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "name",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "reorder_level",
+    "data_type": "numeric(10,3)",
+    "nullability": "NOT NULL",
+    "column_default": "0",
+    "column_definition": "numeric(10,3) NOT NULL DEFAULT 0"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "reorder_quantity",
+    "data_type": "numeric(10,3)",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,3) NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "supplier_note",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "unit",
+    "data_type": "unit_of_measure",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "unit_of_measure NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "delta",
+    "data_type": "numeric(10,4)",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "ingredient_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "note",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "order_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "order_item_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "performed_by",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "reason",
+    "data_type": "movement_reason",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "movement_reason NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "column_name": "unit_cost_at_time",
+    "data_type": "numeric(10,4)",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "ingredient_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "item_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "quantity_required",
+    "data_type": "numeric(10,4)",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "item_ingredients",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "category",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "in_stock",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "true",
+    "column_definition": "boolean NOT NULL DEFAULT true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "item_type",
+    "data_type": "item_type",
+    "nullability": "NOT NULL",
+    "column_default": "'food'::item_type",
+    "column_definition": "item_type NOT NULL DEFAULT 'food'::item_type"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "name",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
+    "column_name": "price",
+    "data_type": "numeric",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "body",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "clerk_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "is_read",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "false",
+    "column_definition": "boolean NOT NULL DEFAULT false"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "recipient_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "column_name": "sender_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "item_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "order_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "quantity",
+    "data_type": "integer",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "integer NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_items",
+    "column_name": "unit_price_at_order",
+    "data_type": "numeric(10,2)",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,2) NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "changed_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "changed_by",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "from_status",
+    "data_type": "order_status",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "order_status NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "note",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "order_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "order_status_log",
+    "column_name": "to_status",
+    "data_type": "order_status",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "order_status NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "cancel_reason",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "cancelled_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "cart_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "completed_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "confirmed_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "confirmed_by",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "deleted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "delivery_address",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "delivery_type",
+    "data_type": "delivery_type",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "delivery_type NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "eta",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "uuid_generate_v4()",
+    "column_definition": "uuid NOT NULL DEFAULT uuid_generate_v4()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "is_walkin",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "false",
+    "column_definition": "boolean NOT NULL DEFAULT false"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "status",
+    "data_type": "order_status",
+    "nullability": "NOT NULL",
+    "column_default": "'pending'::order_status",
+    "column_definition": "order_status NOT NULL DEFAULT 'pending'::order_status"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "total_price",
+    "data_type": "numeric(10,2)",
+    "nullability": "NOT NULL",
+    "column_default": "0",
+    "column_definition": "numeric(10,2) NOT NULL DEFAULT 0"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
+    "column_name": "walkin_label",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "email",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "nullability": "NOT NULL",
+    "column_default": "true",
+    "column_definition": "boolean NOT NULL DEFAULT true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "last_seen_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "phone",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "profiles",
+    "column_name": "username",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "counted_stock",
+    "data_type": "numeric(10,4)",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "delta",
+    "data_type": "numeric(10,4)",
+    "nullability": "NULL",
+    "column_default": "(counted_stock - system_stock_at_count)",
+    "column_definition": "numeric(10,4) NULL DEFAULT (counted_stock - system_stock_at_count)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "ingredient_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "movement_id",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "reconciliation_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliation_lines",
+    "column_name": "system_stock_at_count",
+    "data_type": "numeric(10,4)",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "numeric(10,4) NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "applied_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "approved_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "timestamp with time zone NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "approved_by",
+    "data_type": "uuid",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "uuid NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "conducted_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "conducted_by",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "note",
+    "data_type": "text",
+    "nullability": "NULL",
+    "column_default": null,
+    "column_definition": "text NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "column_name": "status",
+    "data_type": "reconciliation_status",
+    "nullability": "NOT NULL",
+    "column_default": "'draft'::reconciliation_status",
+    "column_definition": "reconciliation_status NOT NULL DEFAULT 'draft'::reconciliation_status"
+  }
+]

@@ -1,8 +1,10 @@
+// src/pages/Orders.jsx
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import useAuth from "../hooks/useAuth";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import { text } from "../styles/components";
+import { page } from "../styles/page";
 
 export default function Orders() {
   const { user }                      = useAuth();
@@ -51,13 +53,15 @@ export default function Orders() {
   const completedOrders = orders.filter((o) => ["completed", "cancelled"].includes(o.status));
   const displayed       = activeTab === "active" ? activeOrders : completedOrders;
 
-  if (loading) return <div style={s.loader}><span className="spinner" /></div>;
+  if (loading) return (
+    <div style={s.loadingWrap}>
+      <span className="spinner" />
+    </div>
+  );
 
   return (
     <div style={s.page}>
-      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 36, marginBottom: 16 }}>
-        My Orders
-      </h2>
+      <h2 style={s.heading}>My Orders</h2>
 
       {/* Tabs */}
       <div style={s.tabs}>
@@ -161,8 +165,20 @@ export default function Orders() {
 }
 
 const s = {
-  page:   { maxWidth: 600, margin: "0 auto", padding: "32px 16px" },
-  loader: { height: "50vh", display: "flex", alignItems: "center", justifyContent: "center" },
+  loadingWrap: {
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "center",
+    minHeight:      "40vh",
+  },
+  page:    { maxWidth: 600, margin: "0 auto", padding: "32px 16px" },
+  heading: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      36,
+    letterSpacing: "0.04em",
+    color:         "var(--bone)",
+    marginBottom:  16,
+  },
   tabs: {
     display:      "flex",
     borderBottom: "1px solid var(--pit)",
@@ -196,34 +212,36 @@ const s = {
     display:        "flex",
     justifyContent: "space-between",
     alignItems:     "center",
-    marginBottom:   8,
+    marginBottom:   10,
   },
   meta: {
     display:      "flex",
     gap:          16,
+    flexWrap:     "wrap",
     marginBottom: 8,
   },
   finishedNote: {
     fontFamily:    "var(--font-body)",
-    fontSize:      11,
-    letterSpacing: "0.08em",
+    fontSize:      12,
     color:         "var(--muted)",
-    marginBottom:  4,
+    marginTop:     4,
+    letterSpacing: "0.05em",
   },
   toggleBtn: {
     background:    "transparent",
     border:        "none",
-    color:         "var(--muted)",
+    cursor:        "pointer",
     fontFamily:    "var(--font-body)",
     fontSize:      12,
     letterSpacing: "0.1em",
-    cursor:        "pointer",
-    padding:       0,
-    marginBottom:  8,
+    color:         "var(--fire)",
+    padding:       "8px 0 0",
+    textTransform: "uppercase",
   },
   lineItems: {
+    marginTop:     8,
     borderTop:     "1px solid var(--pit)",
-    paddingTop:    10,
+    paddingTop:    8,
     display:       "flex",
     flexDirection: "column",
     gap:           6,
@@ -231,8 +249,8 @@ const s = {
   lineItem: {
     display:        "flex",
     justifyContent: "space-between",
-    fontFamily:     "var(--font-body)",
-    fontSize:       14,
+    fontFamily:     "var(--font-sans)",
+    fontSize:       13,
     color:          "var(--bone)",
   },
 };

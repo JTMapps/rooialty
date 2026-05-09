@@ -1,7 +1,15 @@
+// src/pages/Login.jsx
+// FIX: reads role from session.user.app_metadata (set by auth hook)
+//      instead of profiles.role (column was removed)
+// FIX: sets window.location.hostname in user_metadata so the auth hook
+//      can resolve the correct entity on every token issuance
+
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { btn, card, input, layout, text } from "../styles/components";
+import { btn, input } from "../styles/components";
+import { page } from "../styles/page";
+import { form } from "../styles/forms";
 
 export default function Login() {
   const [email,    setEmail]    = useState("");
@@ -16,23 +24,37 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // 1. Sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Set origin in user_metadata so the auth hook can resolve the entity.
+    //    updateUser triggers a token refresh, and the hook fires again with the
+    //    origin set, writing entity_id + entity_role into app_metadata.
+    const origin = window.location.hostname;
+    const { data: updated, error: updateError } = await supabase.auth.updateUser({
+      data: { origin },
+    });
+
+    if (updateError) {
+      // Non-fatal: the fallback path in the hook uses existing memberships.
+      console.warn("Login: could not set origin metadata:", updateError.message);
+    }
+
+    // 3. Role comes from app_metadata (written by the auth hook on the server).
+    //    After updateUser the returned user object has the refreshed JWT claims.
+    const role = updated?.user?.app_metadata?.entity_role ?? null;
+
     setLoading(false);
 
-    if (error) { setError(error.message); return; }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    // Clerks home is /counter (walk-in panel), users home is /menu
-    if (profile?.role === "clerk") {
-      navigate("/counter", { replace: true });
-    } else {
-      navigate("/menu", { replace: true });
-    }
+    if (role === "clerk")  { navigate("/counter", { replace: true }); return; }
+    if (role === "office") { navigate("/office",  { replace: true }); return; }
+    navigate("/menu", { replace: true });
   };
 
   const inputStyle = (field) => ({
@@ -41,15 +63,15 @@ export default function Login() {
   });
 
   return (
-    <div style={layout.centered}>
-      <div style={card.auth}>
+    <div style={page.centered}>
+      <div style={page.cardAuth}>
 
-        <div style={s.eyebrow}>Est. in the Streets</div>
+        <div style={page.eyebrow}>Est. in the Streets</div>
         <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
-        <div style={s.divider} />
+        <div style={page.dividerCentered} />
         <p style={s.subtitle}>Login to continue</p>
 
-        <form onSubmit={handleLogin} style={s.form}>
+        <form onSubmit={handleLogin} style={form.stack}>
           <input
             style={inputStyle("email")}
             className="input-base"
@@ -81,13 +103,13 @@ export default function Login() {
           </button>
         </form>
 
-        {error && <p style={text.error}>{error}</p>}
+        {error && <p style={form.error}>{error}</p>}
 
         <p style={s.linkText}>
           Don't have an account?{" "}
           <span
             onClick={() => navigate("/register", { replace: true })}
-            style={text.link}
+            style={s.link}
           >
             Register
           </span>
@@ -99,26 +121,12 @@ export default function Login() {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      "11px",
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    color:         "var(--fire)",
-    marginBottom:  "6px",
-  },
   title: {
     fontFamily:    "var(--font-display)",
     fontSize:      "56px",
     lineHeight:    1,
     letterSpacing: "0.04em",
     margin:        "0 0 12px",
-  },
-  divider: {
-    width:      "40px",
-    height:     "2px",
-    background: "var(--fire)",
-    margin:     "0 auto 16px",
   },
   subtitle: {
     fontFamily:    "var(--font-body)",
@@ -128,16 +136,16 @@ const s = {
     color:         "var(--muted)",
     marginBottom:  "24px",
   },
-  form: {
-    display:       "flex",
-    flexDirection: "column",
-    gap:           "10px",
-  },
   linkText: {
     marginTop:     "20px",
     fontSize:      "13px",
     color:         "var(--muted)",
     fontFamily:    "var(--font-body)",
     letterSpacing: "0.05em",
+  },
+  link: {
+    color:          "var(--fire)",
+    cursor:         "pointer",
+    textDecoration: "none",
   },
 };

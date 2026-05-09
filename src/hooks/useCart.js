@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import useAuth from "./useAuth";
 
+
 export default function useCart() {
-  const { user, profile } = useAuth();
+  const { user, profile, entityId } = useAuth();  // ADD entityId
 
   const [cart, setCart] = useState(null);
   const [items, setItems] = useState([]);
@@ -18,30 +19,27 @@ export default function useCart() {
   // FETCH CART (initial only)
   // ─────────────────────────────────────────────
   const fetchCart = useCallback(async () => {
-    if (!user || !profile) {
-      setCart(null);
-      setItems([]);
-      setLoading(false);
-      return;
+    if (!user || !profile || !entityId) {  // ADD entityId guard
+      setCart(null); setItems([]); setLoading(false); return;
     }
 
     setLoading(true);
 
     try {
-      let { data: existingCart } = await supabase
+        let { data: existingCart } = await supabase
         .from("carts")
         .select("*")
         .eq("user_id", user.id)
+        .eq("entity_id", entityId)     // ADD THIS
         .eq("status", "active")
         .maybeSingle();
 
       if (!existingCart) {
         const { data: newCart, error } = await supabase
           .from("carts")
-          .insert([{ user_id: user.id }])
+          .insert([{ user_id: user.id, entity_id: entityId }])  // ADD entity_id
           .select()
           .single();
-
         if (error) throw error;
         existingCart = newCart;
       }
@@ -64,7 +62,7 @@ export default function useCart() {
     } finally {
       setLoading(false);
     }
-  }, [user, profile]);
+  },[user, profile, entityId]);  // ADD entityId to deps
 
   useEffect(() => {
     fetchCart();
