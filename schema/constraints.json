@@ -8,6 +8,12 @@
   {
     "schema_name": "public",
     "table_name": "availability",
+    "constraint_name": "availability_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "availability",
     "constraint_name": "availability_pkey",
     "constraint_definition": "PRIMARY KEY (id)"
   },
@@ -44,6 +50,12 @@
   {
     "schema_name": "public",
     "table_name": "carts",
+    "constraint_name": "carts_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "carts",
     "constraint_name": "carts_pkey",
     "constraint_definition": "PRIMARY KEY (id)"
   },
@@ -52,6 +64,54 @@
     "table_name": "carts",
     "constraint_name": "carts_user_id_fkey",
     "constraint_definition": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "constraint_name": "entities_domain_key",
+    "constraint_definition": "UNIQUE (domain)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "constraint_name": "entities_owner_id_fkey",
+    "constraint_definition": "FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "constraint_name": "entities_pkey",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entities",
+    "constraint_name": "entities_slug_key",
+    "constraint_definition": "UNIQUE (slug)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "constraint_name": "entity_members_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "constraint_name": "entity_members_entity_id_profile_id_key",
+    "constraint_definition": "UNIQUE (entity_id, profile_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "constraint_name": "entity_members_pkey",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_members",
+    "constraint_name": "entity_members_profile_id_fkey",
+    "constraint_definition": "FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE"
   },
   {
     "schema_name": "public",
@@ -64,6 +124,12 @@
     "table_name": "ingredient_stock_cache",
     "constraint_name": "ingredient_stock_cache_pkey",
     "constraint_definition": "PRIMARY KEY (ingredient_id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ingredients",
+    "constraint_name": "ingredients_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
   },
   {
     "schema_name": "public",
@@ -100,6 +166,12 @@
     "table_name": "inventory_movements",
     "constraint_name": "chk_order_required_for_consumption",
     "constraint_definition": "CHECK ((reason <> ALL (ARRAY['order_consumption'::movement_reason, 'cancellation_reversal'::movement_reason])) OR order_id IS NOT NULL)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "inventory_movements",
+    "constraint_name": "inventory_movements_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
   },
   {
     "schema_name": "public",
@@ -164,6 +236,12 @@
   {
     "schema_name": "public",
     "table_name": "items",
+    "constraint_name": "items_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "items",
     "constraint_name": "items_pkey",
     "constraint_definition": "PRIMARY KEY (id)"
   },
@@ -184,6 +262,12 @@
     "table_name": "messages",
     "constraint_name": "messages_clerk_id_fkey",
     "constraint_definition": "FOREIGN KEY (clerk_id) REFERENCES profiles(id) ON DELETE SET NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "messages",
+    "constraint_name": "messages_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
   },
   {
     "schema_name": "public",
@@ -266,6 +350,12 @@
   {
     "schema_name": "public",
     "table_name": "orders",
+    "constraint_name": "orders_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "orders",
     "constraint_name": "orders_pkey",
     "constraint_definition": "PRIMARY KEY (id)"
   },
@@ -340,6 +430,12 @@
     "table_name": "stock_reconciliations",
     "constraint_name": "stock_reconciliations_conducted_by_fkey",
     "constraint_definition": "FOREIGN KEY (conducted_by) REFERENCES profiles(id) ON DELETE RESTRICT"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "stock_reconciliations",
+    "constraint_name": "stock_reconciliations_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT"
   },
   {
     "schema_name": "public",

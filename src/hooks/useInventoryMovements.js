@@ -4,6 +4,8 @@
 
 import { useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import useAuth from "./useAuth";
+
 
 const PAGE_SIZE = 50;
 
@@ -12,6 +14,7 @@ export default function useInventoryMovements(filters = {}) {
   const [loading,   setLoading]   = useState(false);
   const [count,     setCount]     = useState(0);
   const [page,      setPage]      = useState(0);
+  const {entityId } = useAuth();  // ADD entityId
 
   const fetch = useCallback(async (pageOverride) => {
     setLoading(true);
@@ -27,6 +30,7 @@ export default function useInventoryMovements(filters = {}) {
         order:orders ( id, status, walkin_label, user_id ),
         performed_by_profile:profiles!performed_by ( id, username )
       `, { count: "exact" })
+      .eq("entity_id", entityId)
       .order("created_at", { ascending: false })
       .range(from, to);
 

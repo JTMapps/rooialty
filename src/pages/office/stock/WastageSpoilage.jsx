@@ -123,10 +123,11 @@ export default function WastageSpoilage() {
 
     const { error: err } = await supabase.from("inventory_movements").insert({
       ingredient_id: ingredientId,
-      delta:         -qty,
-      reason:        reasonType,
+      delta:         -Math.abs(Number(quantity)),   // negative
+      reason:        reasonType,                    // "wastage" or "spoilage"
+      note:          description.trim() || null,
       performed_by:  user.id,
-      note:          description.trim(),
+      entity_id:     entityId,   // ADD THIS
     });
 
     setSaving(false);

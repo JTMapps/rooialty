@@ -1,214 +1,313 @@
 // src/hooks/useReconciliations.js
-//
-// STATE MACHINE:  draft ──► submitted ──► approved
-//                              │
-//                              └──► draft  (return to draft)
-//
-// KEY RULE:  stock_reconciliation_lines rows are inserted ONCE, when the
-//            reconciliation is first created in draft mode.
-//            Status transitions (submit / approve / return-to-draft) NEVER
-//            touch stock_reconciliation_lines again.
-//
-// ROOT CAUSE OF THE BUG THAT WAS HERE:
-//   The approve handler was calling supabase.from('stock_reconciliation_lines')
-//   .insert(lines) even though those rows already existed from the initial
-//   draft-creation step.  This violated the UNIQUE constraint
-//   uq_reconciliation_ingredient (reconciliation_id, ingredient_id).
+// FIXED: added missing useAuth import
+// FIXED: apply() — used wrong variable name (discrepancyLines → validLines)
+// FIXED: apply() — used l.ingredient_id instead of l.ingredient?.id
+// FIXED: apply() — `id` (undefined) replaced with activeRecon.id
+// FIXED: createReconciliation — removed stray `note` reference
+// FIXED: delta is GENERATED ALWAYS — never inserted or updated
+// FIXED: reload lines after every write so delta is always from DB
 
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import { useAuth } from './useAuth'
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "../lib/supabaseClient";
+import useAuth from "./useAuth";   // ← was missing
 
-export function useReconciliations() {
-  const { user } = useAuth()
-  const [reconciliations, setReconciliations] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+export default function useReconciliations() {
+  const { user, entityId } = useAuth();
 
-  // ── Fetch all reconciliations (list view) ──────────────────────────────────
-  const fetchReconciliations = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const [reconciliations, setReconciliations] = useState([]);
+  const [activeRecon,     setActiveRecon]     = useState(null);
+  const [lines,           setLines]           = useState({});
+  const [ingredients,     setIngredients]     = useState([]);
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState("");
+
+  // ── LOAD ALL RECONCILIATIONS ───────────────────────────────────────────────
+  const loadReconciliations = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
     const { data, error: err } = await supabase
-      .from('stock_reconciliations')
-      .select('id, status, conducted_at, note, profiles!conducted_by(username)')
-      .order('conducted_at', { ascending: false })
+      .from("stock_reconciliations")
+      .select(`
+        id, status, conducted_at, applied_at, note,
+        conducted_by_profile:profiles!conducted_by(username),
+        approved_by_profile:profiles!approved_by(username),
+        stock_reconciliation_lines(id, delta)
+      `)
+      .order("conducted_at", { ascending: false });
 
-    if (err) {
-      setError(err.message)
-    } else {
-      setReconciliations(data ?? [])
+    if (err) setError(err.message);
+    else setReconciliations(data ?? []);
+
+    setLoading(false);
+  }, []);
+
+  // ── LOAD INGREDIENTS (for the count form) ─────────────────────────────────
+  const loadIngredients = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from("ingredients")
+      .select("id, name, unit, ingredient_stock_cache(current_stock)")
+      .is("deleted_at", null)
+      .order("name");
+
+    if (err) { setError(err.message); return; }
+    setIngredients(data ?? []);
+  }, []);
+
+  // ── LOAD LINES (always reads delta from DB — it is GENERATED ALWAYS) ──────
+  const loadLines = useCallback(async (reconId) => {
+    if (!reconId) return;
+
+    const { data, error: err } = await supabase
+      .from("stock_reconciliation_lines")
+      .select(`
+        id,
+        ingredient_id,
+        system_stock_at_count,
+        counted_stock,
+        delta,
+        movement_id,
+        ingredient:ingredients(id, name, unit)
+      `)
+      .eq("reconciliation_id", reconId);
+
+    if (err) { setError(err.message); return; }
+
+    const map = {};
+    (data ?? []).forEach((l) => {
+      map[l.ingredient_id] = {
+        lineId:             l.id,
+        counted:            l.counted_stock != null ? String(l.counted_stock) : "",
+        systemStockAtCount: l.system_stock_at_count,
+        delta:              l.delta,          // computed by DB, never written
+        movementId:         l.movement_id,
+        ingredient:         l.ingredient ?? null,
+      };
+    });
+
+    setLines(map);
+  }, []);
+
+  // ── CREATE ─────────────────────────────────────────────────────────────────
+  const createReconciliation = useCallback(async (noteText = "") => {
+    if (!user?.id) { setError("User not available"); return null; }
+    if (!entityId)  { setError("Entity not resolved"); return null; }
+
+    setError("");
+
+    const { data, error: err } = await supabase
+      .from("stock_reconciliations")
+      .insert({
+        conducted_by: user.id,
+        entity_id:    entityId,
+        status:       "draft",
+        conducted_at: new Date().toISOString(),
+        note:         noteText.trim() || null,
+      })
+      .select("id")
+      .single();
+
+    if (err) { setError(err.message); return null; }
+
+    setActiveRecon(data);
+    setLines({});
+    await loadIngredients();
+
+    return data;
+  }, [user, entityId, loadIngredients]);
+
+  // ── OPEN ───────────────────────────────────────────────────────────────────
+  const openReconciliation = useCallback(async (recon) => {
+    if (!recon?.id) return;
+
+    setActiveRecon(recon);
+    setError("");
+
+    await Promise.all([loadIngredients(), loadLines(recon.id)]);
+  }, [loadIngredients, loadLines]);
+
+  // ── SAVE LINE ──────────────────────────────────────────────────────────────
+  // Never writes delta — it is a GENERATED ALWAYS column.
+  // Reloads lines after write so delta is always the DB-computed value.
+  const saveLine = useCallback(async (ingredientId, countedValue, systemStock) => {
+    if (!activeRecon?.id) return;
+
+    const counted = parseFloat(countedValue);
+    const system  = parseFloat(systemStock);
+
+    if (isNaN(counted) || isNaN(system)) return;
+
+    const existing = lines[ingredientId];
+
+    try {
+      if (existing?.lineId) {
+        // UPDATE — omit delta entirely
+        const { error: err } = await supabase
+          .from("stock_reconciliation_lines")
+          .update({
+            counted_stock:        counted,
+            system_stock_at_count: system,
+          })
+          .eq("id", existing.lineId);
+
+        if (err) throw err;
+      } else {
+        // INSERT — omit delta entirely
+        const { data, error: err } = await supabase
+          .from("stock_reconciliation_lines")
+          .insert({
+            reconciliation_id:    activeRecon.id,
+            ingredient_id:        ingredientId,
+            counted_stock:        counted,
+            system_stock_at_count: system,
+          })
+          .select("id")
+          .single();
+
+        if (err) throw err;
+
+        // Optimistically update lineId so the next save uses UPDATE not INSERT
+        if (data?.id) {
+          setLines((prev) => ({
+            ...prev,
+            [ingredientId]: { ...(prev[ingredientId] ?? {}), lineId: data.id },
+          }));
+        }
+      }
+
+      // Always reload to get the DB-computed delta
+      await loadLines(activeRecon.id);
+
+    } catch (err) {
+      setError(err.message);
     }
-    setLoading(false)
-  }, [])
+  }, [activeRecon, lines, loadLines]);
 
+  // ── SUBMIT ─────────────────────────────────────────────────────────────────
+  const submit = useCallback(async () => {
+    if (!activeRecon?.id) return;
+
+    const { error: err } = await supabase
+      .from("stock_reconciliations")
+      .update({ status: "submitted" })
+      .eq("id", activeRecon.id);
+
+    if (err) { setError(err.message); return; }
+
+    setActiveRecon((prev) => ({ ...prev, status: "submitted" }));
+    await loadReconciliations();
+  }, [activeRecon, loadReconciliations]);
+
+  // ── APPROVE ────────────────────────────────────────────────────────────────
+  const approve = useCallback(async () => {
+    if (!activeRecon?.id || !user?.id) return;
+
+    const { error: err } = await supabase
+      .from("stock_reconciliations")
+      .update({
+        status:      "approved",
+        approved_by: user.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", activeRecon.id);
+
+    if (err) { setError(err.message); return; }
+
+    setActiveRecon((prev) => ({ ...prev, status: "approved" }));
+    await loadReconciliations();
+  }, [activeRecon, user, loadReconciliations]);
+
+  // ── APPLY ──────────────────────────────────────────────────────────────────
+  // For each line with a non-zero delta, creates an inventory_movements row
+  // and links it back to the reconciliation line via movement_id.
+  // FIX: was 'discrepancyLines' (undefined) — now correctly 'validLines'
+  // FIX: was l.ingredient_id (undefined on value objects) — now l.ingredient?.id
+  // FIX: was `${id}` (undefined) — now `${activeRecon.id}`
+  const apply = useCallback(async () => {
+    if (!activeRecon?.id || !user?.id) return;
+    if (!entityId) { setError("Entity not resolved"); return; }
+
+    setError("");
+
+    const validLines = Object.values(lines).filter(
+      (l) => l?.delta != null && l.delta !== 0 && l?.ingredient?.id
+    );
+
+    try {
+      if (validLines.length > 0) {
+        const movements = validLines.map((l) => ({
+          ingredient_id: l.ingredient.id,          // FIX: was l.ingredient_id
+          delta:         l.delta,
+          reason:        "manual_adjustment",       // valid enum value
+          entity_id:     entityId,
+          performed_by:  user.id,
+          note:          `Stock reconciliation ${activeRecon.id}`, // FIX: was `${id}`
+        }));
+
+        const { data: inserted, error: movErr } = await supabase
+          .from("inventory_movements")
+          .insert(movements)
+          .select("id, ingredient_id");
+
+        if (movErr) throw movErr;
+
+        // Link movement IDs back to reconciliation lines
+        for (const m of inserted ?? []) {
+          if (!m?.ingredient_id) continue;
+
+          const line = Object.values(lines).find(
+            (l) => l?.ingredient?.id === m.ingredient_id
+          );
+
+          if (line?.lineId) {
+            await supabase
+              .from("stock_reconciliation_lines")
+              .update({ movement_id: m.id })
+              .eq("id", line.lineId);
+          }
+        }
+      }
+
+      const { error: updErr } = await supabase
+        .from("stock_reconciliations")
+        .update({
+          status:     "applied",
+          applied_at: new Date().toISOString(),
+        })
+        .eq("id", activeRecon.id);
+
+      if (updErr) throw updErr;
+
+      setActiveRecon((prev) => ({ ...prev, status: "applied" }));
+      await loadReconciliations();
+
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [activeRecon, lines, user, entityId, loadReconciliations]);
+
+  // ── INIT ───────────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchReconciliations()
-  }, [fetchReconciliations])
-
-  // ── Fetch a single reconciliation + its lines ──────────────────────────────
-  const fetchReconciliationDetail = async (id) => {
-    const { data: rec, error: recErr } = await supabase
-      .from('stock_reconciliations')
-      .select('id, status, conducted_at, note, profiles!conducted_by(username)')
-      .eq('id', id)
-      .single()
-
-    if (recErr) throw recErr
-
-    const { data: lines, error: linesErr } = await supabase
-      .from('stock_reconciliation_lines')
-      .select(
-        'id, ingredient_id, system_stock_at_count, counted_stock, delta, ' +
-        'ingredient:ingredients(id, name, unit)'
-      )
-      .eq('reconciliation_id', id)
-      .order('ingredient_id')
-
-    if (linesErr) throw linesErr
-
-    return { ...rec, lines: lines ?? [] }
-  }
-
-  // ── CREATE a new reconciliation in draft status ────────────────────────────
-  //
-  // lines should be:
-  //   [{ ingredient_id, system_stock_at_count, counted_stock }]
-  //
-  // delta is calculated here so it is always consistent.
-  //
-  // This is the ONLY function that inserts into stock_reconciliation_lines.
-  const createReconciliation = async ({ note = '', lines = [] }) => {
-    if (!lines.length) throw new Error('Cannot create a reconciliation with no lines.')
-
-    // 1. Create the parent record
-    const { data: rec, error: recErr } = await supabase
-      .from('stock_reconciliations')
-      .insert({ status: 'draft', conducted_by: user.id, note })
-      .select('id')
-      .single()
-
-    if (recErr) throw recErr
-
-    // 2. Insert lines — ONE row per ingredient, ONCE, here only
-    const lineRows = lines.map((l) => ({
-      reconciliation_id: rec.id,
-      ingredient_id:     l.ingredient_id,
-      system_stock_at_count: Number(l.system_stock_at_count),
-      counted_stock:         Number(l.counted_stock ?? l.system_stock_at_count),
-      delta:
-        Number(l.counted_stock ?? l.system_stock_at_count) -
-        Number(l.system_stock_at_count),
-    }))
-
-    const { error: lineErr } = await supabase
-      .from('stock_reconciliation_lines')
-      .insert(lineRows)
-
-    if (lineErr) throw lineErr
-
-    await fetchReconciliations()
-    return rec.id
-  }
-
-  // ── UPDATE a single line's counted_stock (during draft editing) ────────────
-  const updateLine = async (lineId, { countedStock, systemStock }) => {
-    const counted = Number(countedStock)
-    const system  = Number(systemStock)
-    const delta   = counted - system
-
-    const { error: err } = await supabase
-      .from('stock_reconciliation_lines')
-      .update({ counted_stock: counted, delta })
-      .eq('id', lineId)
-
-    if (err) throw err
-  }
-
-  // ── SUBMIT for review  (draft → submitted) ─────────────────────────────────
-  //
-  //  ONLY updates the status.  Does NOT touch stock_reconciliation_lines.
-  const submitReconciliation = async (id) => {
-    const { error: err } = await supabase
-      .from('stock_reconciliations')
-      .update({ status: 'submitted' })
-      .eq('id', id)
-
-    if (err) throw err
-    await fetchReconciliations()
-  }
-
-  // ── RETURN TO DRAFT  (submitted → draft) ──────────────────────────────────
-  //
-  //  ONLY updates the status.  Lines are preserved exactly as they are,
-  //  so the user can continue editing them without losing data.
-  const returnToDraft = async (id) => {
-    const { error: err } = await supabase
-      .from('stock_reconciliations')
-      .update({ status: 'draft' })
-      .eq('id', id)
-
-    if (err) throw err
-    await fetchReconciliations()
-  }
-
-  // ── APPROVE  (submitted → approved) ───────────────────────────────────────
-  //
-  //  Steps:
-  //    1. Read existing lines (already in DB — do NOT re-insert them)
-  //    2. For every line where delta ≠ 0, insert one inventory_movement
-  //    3. Update the reconciliation status to 'approved'
-  //
-  //  This function intentionally has NO .insert() call targeting
-  //  stock_reconciliation_lines — that was the source of the constraint error.
-  const approveReconciliation = async (id) => {
-    // Step 1 — read the lines we already have
-    const { data: lines, error: linesErr } = await supabase
-      .from('stock_reconciliation_lines')
-      .select('ingredient_id, delta')
-      .eq('reconciliation_id', id)
-
-    if (linesErr) throw linesErr
-
-    // Step 2 — create inventory movements only for discrepancies
-    const discrepancyLines = (lines ?? []).filter((l) => l.delta !== 0)
-
-    if (discrepancyLines.length > 0) {
-      const movements = discrepancyLines.map((l) => ({
-        ingredient_id:    l.ingredient_id,
-        delta:            l.delta,
-        reason:           'reconciliation',
-        reconciliation_id: id,
-        performed_by:     user.id,
-      }))
-
-      const { error: movErr } = await supabase
-        .from('inventory_movements')
-        .insert(movements)
-
-      if (movErr) throw movErr
-    }
-
-    // Step 3 — mark approved (status only, no line touch)
-    const { error: statusErr } = await supabase
-      .from('stock_reconciliations')
-      .update({ status: 'approved' })
-      .eq('id', id)
-
-    if (statusErr) throw statusErr
-    await fetchReconciliations()
-  }
+    loadReconciliations();
+  }, [loadReconciliations]);
 
   return {
     reconciliations,
+    activeRecon,
+    lines,
+    ingredients,
     loading,
     error,
-    refresh:                 fetchReconciliations,
-    fetchReconciliationDetail,
+
     createReconciliation,
-    updateLine,
-    submitReconciliation,
-    returnToDraft,
-    approveReconciliation,
-  }
+    openReconciliation,
+    saveLine,
+    submit,
+    approve,
+    apply,
+
+    reload:         loadReconciliations,
+    loadLines,
+    loadIngredients,
+  };
 }

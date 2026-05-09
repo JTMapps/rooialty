@@ -30,8 +30,8 @@ export default function useMenu() {
     data.forEach((item) => {
       const key =
         item.item_type === "drink"
-          ? "COLD SERVES"
-          : item.category ?? "OTHER";
+          ? "COLD SERVES"   //should eventually become dynamic
+          : item.category ?? "OTHER";  
 
       if (!groupedData[key]) groupedData[key] = [];
       groupedData[key].push(item);

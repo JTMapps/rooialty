@@ -1,4 +1,9 @@
 // src/pages/Login.jsx
+// FIX: reads role from session.user.app_metadata (set by auth hook)
+//      instead of profiles.role (column was removed)
+// FIX: sets window.location.hostname in user_metadata so the auth hook
+//      can resolve the correct entity on every token issuance
+
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -19,19 +24,36 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // 1. Sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Set origin in user_metadata so the auth hook can resolve the entity.
+    //    updateUser triggers a token refresh, and the hook fires again with the
+    //    origin set, writing entity_id + entity_role into app_metadata.
+    const origin = window.location.hostname;
+    const { data: updated, error: updateError } = await supabase.auth.updateUser({
+      data: { origin },
+    });
+
+    if (updateError) {
+      // Non-fatal: the fallback path in the hook uses existing memberships.
+      console.warn("Login: could not set origin metadata:", updateError.message);
+    }
+
+    // 3. Role comes from app_metadata (written by the auth hook on the server).
+    //    After updateUser the returned user object has the refreshed JWT claims.
+    const role = updated?.user?.app_metadata?.entity_role ?? null;
+
     setLoading(false);
 
-    if (error) { setError(error.message); return; }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profile?.role === "clerk")  { navigate("/counter", { replace: true }); return; }
-    if (profile?.role === "office") { navigate("/office",  { replace: true }); return; }
+    if (role === "clerk")  { navigate("/counter", { replace: true }); return; }
+    if (role === "office") { navigate("/office",  { replace: true }); return; }
     navigate("/menu", { replace: true });
   };
 

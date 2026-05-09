@@ -1,14 +1,16 @@
+// src/context/AuthProvider.jsx
+
 import { createContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 const AuthContext = createContext(null);
 export default AuthContext;
 
-// Fetch the profile row, or create it if missing
 async function fetchOrCreateProfile(user) {
   const { data: existing } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, email, username, phone, is_active, last_seen_at, created_at")
+    // NOTE: no 'role' column — it no longer exists on profiles
     .eq("id", user.id)
     .maybeSingle();
 
@@ -29,36 +31,28 @@ async function fetchOrCreateProfile(user) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,     setUser]     = useState(null);
+  const [profile,  setProfile]  = useState(null);
+  const [loading,  setLoading]  = useState(true);
+
+  // Derived from JWT app_metadata — set by the auth hook server-side
+  const entityId   = user?.app_metadata?.entity_id   ?? null;
+  const role       = user?.app_metadata?.entity_role  ?? null;
 
   useEffect(() => {
     let mounted = true;
 
-    // 🔥 BOOTSTRAP (FIXED)
     const bootstrap = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
-
         const sessionUser = session?.user ?? null;
-
-        // ✅ 1. Set user immediately (DO NOT WAIT FOR PROFILE)
         setUser(sessionUser);
-
-        // ✅ 2. Stop loading immediately after auth resolves
         setLoading(false);
-
-        // ✅ 3. Fetch profile in background (non-blocking)
         if (sessionUser) {
           fetchOrCreateProfile(sessionUser)
-            .then((p) => {
-              if (mounted) setProfile(p);
-            })
-            .catch((err) => {
-              console.error("Profile fetch error:", err);
-            });
+            .then((p) => { if (mounted) setProfile(p); })
+            .catch(console.error);
         } else {
           setProfile(null);
         }
@@ -70,47 +64,28 @@ export function AuthProvider({ children }) {
 
     bootstrap();
 
-    // 🔥 AUTH STATE LISTENER (FIXED)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         if (event === "INITIAL_SESSION") return;
-
         const sessionUser = session?.user ?? null;
-
-        // ✅ Always set user immediately
         setUser(sessionUser);
         setLoading(false);
-
         if (sessionUser) {
           fetchOrCreateProfile(sessionUser)
-            .then((p) => {
-              if (mounted) setProfile(p);
-            })
-            .catch((err) => {
-              console.error("Profile fetch error:", err);
-            });
+            .then((p) => { if (mounted) setProfile(p); })
+            .catch(console.error);
         } else {
           setProfile(null);
         }
       }
     );
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        role: profile?.role ?? null,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={{ user, profile, entityId, role, loading }}>
       {children}
     </AuthContext.Provider>
   );

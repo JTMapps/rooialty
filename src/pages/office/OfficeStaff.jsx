@@ -50,83 +50,51 @@ export default function OfficeStaff() {
   const [saving,        setSaving]        = useState(false);
   const [saveError,     setSaveError]     = useState("");
   const [saveSuccess,   setSaveSuccess]   = useState("");
+  const { entityId } = useAuth();
 
+  // Load: join profiles to entity_members for current entity
   const loadProfiles = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("profiles")
-      .select("id, username, email, phone, role, is_active, created_at, last_seen_at")
-      .order("created_at", { ascending: false });
-    setProfiles(data || []);
-    setLoading(false);
-  }, []);
+      .from("entity_members")
+      .select(`
+        id,
+        role,
+        is_active,
+        joined_at,
+        profile:profiles (
+          id, username, email, phone, is_active, last_seen_at, created_at
+        )
+      `)
+      .eq("entity_id", entityId)
+      .order("joined_at", { ascending: false });
 
-  useEffect(() => { loadProfiles(); }, [loadProfiles]);
-
-  const filtered = profiles.filter((p) => {
-    if (roleFilter !== "all"   && p.role !== roleFilter)                             return false;
-    if (activeFilter === "active"   && !p.is_active)                                return false;
-    if (activeFilter === "inactive" &&  p.is_active)                                return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (!p.username?.toLowerCase().includes(q) && !p.email?.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
-
-  const openDrawer = (profile) => {
-    setDrawerProfile(profile);
-    setEditRole(profile.role);
-    setEditPhone(profile.phone ?? "");
-    setEditActive(profile.is_active);
-    setSaveError("");
-    setSaveSuccess("");
-  };
-
-  const handleSave = async () => {
-    if (!drawerProfile) return;
-    setSaving(true);
-    setSaveError("");
-    setSaveSuccess("");
-
-    const roleChanged = editRole !== drawerProfile.role;
-
-    if (roleChanged && drawerProfile.id === currentUser?.id) {
-      setSaveError("You cannot change your own role.");
-      setSaving(false);
-      return;
-    }
-
-    if (roleChanged && !window.confirm(
-      `Change ${drawerProfile.username}'s role from ${drawerProfile.role.toUpperCase()} to ${editRole.toUpperCase()}? This will immediately alter their access permissions.`
-    )) {
-      setSaving(false);
-      return;
-    }
-
-    const { error: err } = await supabase
-      .from("profiles")
-      .update({
-        role:      editRole,
-        phone:     editPhone.trim() || null,
-        is_active: editActive,
-      })
-      .eq("id", drawerProfile.id);
-
-    setSaving(false);
-    if (err) { setSaveError(err.message); return; }
-
-    setSaveSuccess("Profile updated.");
-    setTimeout(() => setSaveSuccess(""), 3000);
-    loadProfiles();
-
-    // Update the drawer's cached profile
-    setDrawerProfile((prev) => ({
-      ...prev,
-      role:      editRole,
-      phone:     editPhone,
-      is_active: editActive,
+    // Flatten for easy use in the table
+    const flat = (data || []).map((m) => ({
+      membership_id: m.id,
+      role:          m.role,
+      member_active: m.is_active,   // membership-level active (per entity)
+      joined_at:     m.joined_at,
+      ...m.profile,                 // spreads: id, username, email, phone, is_active (global), last_seen_at, created_at
     }));
+
+    setProfiles(flat);
+    setLoading(false);
+  }, [entityId]);
+
+  // Save: role and member_active write to entity_members, phone writes to profiles
+  const handleSave = async () => {
+    // Update entity_members for role and per-entity active status
+    await supabase
+      .from("entity_members")
+      .update({ role: editRole, is_active: editMemberActive })
+      .eq("id", drawerProfile.membership_id);
+
+    // Update profiles for phone (global identity field)
+    await supabase
+      .from("profiles")
+      .update({ phone: editPhone.trim() || null })
+      .eq("id", drawerProfile.id);
   };
 
   // Stats

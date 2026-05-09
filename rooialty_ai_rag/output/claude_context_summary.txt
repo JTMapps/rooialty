@@ -1,58 +1,333 @@
-========================================================================
-ROOIALTY RAG PIPELINE — CLAUDE CONTEXT SUMMARY
-Generated: 2026-05-08T11:01:22Z
-========================================================================
+======================================================================
+ROOIALTY — FULL SYSTEM ARCHITECTURE SUMMARY
+Generated: 2026-05-09T19:43:45.017179+00:00
+======================================================================
 
-── SCAN STATS ──────────────────────────────────────────────────────
-  Files scanned  : 61
-  Use Supabase   : 32
-  DB tables known: 16
-  Tables touched : 15
+Frontend files scanned : 67
+Files using Supabase   : 33
+DB tables known        : 18
+DB tables with coverage: 16
 
-── PRIMARY BUG: RECIPES PAGE ───────────────────────────────────────
-  Symptom: On the Recipes page (OfficeRecipes.jsx) the UI shows 'Select an item to configure its recipe'. When a menu item is selected, NO ingredients appear below it. The user expects to see ingredients they can add to that item's recipe.
+──────────────────────────────────────────────────────────────────────
+TABLE PROFILES
+──────────────────────────────────────────────────────────────────────
 
-  Gap detected   : True
-  Gap description: OfficeRecipes.jsx touches tables ['item_ingredients', 'items'] but is MISSING queries to: ['ingredients']. This means item selection cannot load associated ingredients.
+  AVAILABILITY
+    Operations : none
+    Readers    : 0 file(s)
+    Writers    : 0 file(s)
+    Filtered on: —
 
-  Recommended fix:
-    `item_ingredients` is queried but `ingredients` is not joined.
-    
-    Fix: extend the select to include the ingredients relation:
-      .select('quantity, unit, ingredients(id, name, unit)')
-      .eq('item_id', selectedItem.id)
+  CART_ITEMS
+    Operations : delete, insert, select, update
+    Readers    : 1 file(s)
+    Writers    : 1 file(s)
+    Filtered on: cart_id, entity_id, item_id, status, user_id
+      read  ← src/hooks/useCart.js
+      write → src/hooks/useCart.js
 
-── RECIPES TABLE COVERAGE ──────────────────────────────────────────
-  ingredients                    ✅
-    → src/hooks/useIngredients.js
-    → src/hooks/useReconciliations.js
-    → src/components/office/IngredientPicker.jsx
-    → src/components/office/OfficeLayout.jsx
-    → src/pages/office/OfficeDashboard.jsx
-    → src/pages/office/OfficeIngredients.jsx
-    → src/pages/office/OfficeLedger.jsx
-    → src/pages/office/OfficeReconciliation.jsx
-    → src/pages/office/OfficeReports.jsx
-    → src/pages/office/stock/Adjustments.jsx
-    → src/pages/office/stock/ReceiveStock.jsx
-    → src/pages/office/stock/WastageSpoilage.jsx
-  item_ingredients               ✅
-    → src/pages/office/OfficeMenuItems.jsx
-    → src/pages/office/OfficeRecipes.jsx
-  items                          ✅
-    → src/hooks/useItemAvailability.js
-    → src/hooks/useMenu.js
-    → src/components/WalkinPanel.jsx
-    → src/pages/Menu.jsx
-    → src/pages/office/OfficeMenuItems.jsx
-    → src/pages/office/OfficeRecipes.jsx
+  CARTS
+    Operations : delete, insert, select, update
+    Readers    : 2 file(s)
+    Writers    : 2 file(s)
+    Filtered on: cart_id, entity_id, id, item_id, status, user_id
+      read  ← src/hooks/useCart.js
+      read  ← src/pages/Checkout.jsx
+      write → src/hooks/useCart.js
+      write → src/pages/Checkout.jsx
 
-── ORPHAN DB TABLES (never queried from frontend) ──────────────────
-  • availability
-  • mv_daily_consumption
+  ENTITIES
+    Operations : none
+    Readers    : 0 file(s)
+    Writers    : 0 file(s)
+    Filtered on: —
 
-── ORPHAN FRONTEND FILES (Supabase with no known table) ────────────
-  • src/lib/supabaseClient.js
-  • src/pages/Register.jsx
+  ENTITY_MEMBERS
+    Operations : select, update
+    Readers    : 2 file(s)
+    Writers    : 2 file(s)
+    Filtered on: entity_id, id
+      read  ← src/hooks/useStaff.js
+      read  ← src/pages/office/OfficeStaff.jsx
+      write → src/hooks/useStaff.js
+      write → src/pages/office/OfficeStaff.jsx
 
-Full detail → claude_context.json
+  INGREDIENT_STOCK_CACHE
+    Operations : select
+    Readers    : 1 file(s)
+    Writers    : 0 file(s)
+    Filtered on: —
+      read  ← src/pages/office/OfficeLedger.jsx
+
+  INGREDIENTS
+    Operations : insert, select, update
+    Readers    : 12 file(s)
+    Writers    : 5 file(s)
+    Filtered on: created_at, delta, id, ingredient_id, is_read, order_id, reason, recipient_id, reconciliation_id, status
+      read  ← src/hooks/useIngredients.js
+      read  ← src/hooks/useReconciliations.js
+      read  ← src/components/office/IngredientPicker.jsx
+      read  ← src/components/office/OfficeLayout.jsx
+      read  ← src/pages/office/OfficeDashboard.jsx
+      read  ← src/pages/office/OfficeIngredients.jsx
+      read  ← src/pages/office/OfficeLedger.jsx
+      read  ← src/pages/office/OfficeReconciliation.jsx
+      read  ← src/pages/office/OfficeReports.jsx
+      read  ← src/pages/office/stock/Adjustments.jsx
+      read  ← src/pages/office/stock/ReceiveStock.jsx
+      read  ← src/pages/office/stock/WastageSpoilage.jsx
+      write → src/hooks/useReconciliations.js
+      write → src/pages/office/OfficeIngredients.jsx
+      write → src/pages/office/OfficeReconciliation.jsx
+      write → src/pages/office/stock/ReceiveStock.jsx
+      write → src/pages/office/stock/WastageSpoilage.jsx
+
+  INVENTORY_MOVEMENTS
+    Operations : insert, select, update
+    Readers    : 10 file(s)
+    Writers    : 5 file(s)
+    Filtered on: created_at, delivery_type, delta, entity_id, id, ingredient_id, is_walkin, order_id, performed_by, reason, reconciliation_id, status, walkin_label
+      read  ← src/hooks/useInventoryMovements.js
+      read  ← src/hooks/useReconciliations.js
+      read  ← src/hooks/useStockEntry.js
+      read  ← src/pages/office/OfficeDashboard.jsx
+      read  ← src/pages/office/OfficeIngredients.jsx
+      read  ← src/pages/office/OfficeLedger.jsx
+      read  ← src/pages/office/OfficeOrders.jsx
+      read  ← src/pages/office/OfficeReconciliation.jsx
+      read  ← src/pages/office/OfficeReports.jsx
+      read  ← src/pages/office/stock/WastageSpoilage.jsx
+      write → src/hooks/useReconciliations.js
+      write → src/hooks/useStockEntry.js
+      write → src/pages/office/OfficeIngredients.jsx
+      write → src/pages/office/OfficeReconciliation.jsx
+      write → src/pages/office/stock/WastageSpoilage.jsx
+
+  ITEM_INGREDIENTS
+    Operations : insert, select, update
+    Readers    : 2 file(s)
+    Writers    : 2 file(s)
+    Filtered on: id, item_id
+      read  ← src/pages/office/OfficeMenuItems.jsx
+      read  ← src/pages/office/OfficeRecipes.jsx
+      write → src/pages/office/OfficeMenuItems.jsx
+      write → src/pages/office/OfficeRecipes.jsx
+
+  ITEMS
+    Operations : insert, select, update
+    Readers    : 4 file(s)
+    Writers    : 2 file(s)
+    Filtered on: id, item_id
+      read  ← src/hooks/useItemAvailability.js
+      read  ← src/hooks/useMenu.js
+      read  ← src/pages/office/OfficeMenuItems.jsx
+      read  ← src/pages/office/OfficeRecipes.jsx
+      write → src/pages/office/OfficeMenuItems.jsx
+      write → src/pages/office/OfficeRecipes.jsx
+
+  MESSAGES
+    Operations : insert, select, update
+    Readers    : 3 file(s)
+    Writers    : 1 file(s)
+    Filtered on: entity_id, id, is_read, recipient_id, sender_id, status, user_id
+      read  ← src/hooks/useMessages.js
+      read  ← src/components/Header.jsx
+      read  ← src/components/office/OfficeLayout.jsx
+      write → src/hooks/useMessages.js
+
+  MV_DAILY_CONSUMPTION
+    Operations : none
+    Readers    : 0 file(s)
+    Writers    : 0 file(s)
+    Filtered on: —
+
+  ORDER_ITEMS
+    Operations : insert, select, update
+    Readers    : 3 file(s)
+    Writers    : 2 file(s)
+    Filtered on: created_at, delta, id, order_id, reason
+      read  ← src/hooks/useWalkinOrder.js
+      read  ← src/pages/Checkout.jsx
+      read  ← src/pages/office/OfficeReports.jsx
+      write → src/hooks/useWalkinOrder.js
+      write → src/pages/Checkout.jsx
+
+  ORDER_STATUS_LOG
+    Operations : select
+    Readers    : 1 file(s)
+    Writers    : 0 file(s)
+    Filtered on: created_at, delivery_type, is_walkin, order_id, status, walkin_label
+      read  ← src/pages/office/OfficeOrders.jsx
+
+  ORDERS
+    Operations : insert, select, update
+    Readers    : 8 file(s)
+    Writers    : 3 file(s)
+    Filtered on: created_at, delivery_type, delta, id, is_read, is_walkin, order_id, reason, recipient_id, status, user_id, walkin_label
+      read  ← src/hooks/useKitchenOrders.js
+      read  ← src/hooks/useWalkinOrder.js
+      read  ← src/components/Header.jsx
+      read  ← src/pages/Checkout.jsx
+      read  ← src/pages/office/OfficeDashboard.jsx
+      read  ← src/pages/office/OfficeOrders.jsx
+      read  ← src/pages/office/OfficeReports.jsx
+      read  ← src/pages/Orders.jsx
+      write → src/hooks/useKitchenOrders.js
+      write → src/hooks/useWalkinOrder.js
+      write → src/pages/Checkout.jsx
+
+  PROFILES
+    Operations : insert, select, update
+    Readers    : 4 file(s)
+    Writers    : 4 file(s)
+    Filtered on: entity_id, id
+      read  ← src/hooks/useStaff.js
+      read  ← src/context/AuthProvider.jsx
+      read  ← src/pages/office/OfficeStaff.jsx
+      read  ← src/pages/Profile.jsx
+      write → src/hooks/useStaff.js
+      write → src/context/AuthProvider.jsx
+      write → src/pages/office/OfficeStaff.jsx
+      write → src/pages/Profile.jsx
+
+  STOCK_RECONCILIATION_LINES
+    Operations : insert, select, update
+    Readers    : 2 file(s)
+    Writers    : 2 file(s)
+    Filtered on: id, reconciliation_id
+      read  ← src/hooks/useReconciliations.js
+      read  ← src/pages/office/OfficeReconciliation.jsx
+      write → src/hooks/useReconciliations.js
+      write → src/pages/office/OfficeReconciliation.jsx
+
+  STOCK_RECONCILIATIONS
+    Operations : insert, select, update
+    Readers    : 3 file(s)
+    Writers    : 2 file(s)
+    Filtered on: created_at, id, reconciliation_id, status
+      read  ← src/hooks/useReconciliations.js
+      read  ← src/pages/office/OfficeDashboard.jsx
+      read  ← src/pages/office/OfficeReconciliation.jsx
+      write → src/hooks/useReconciliations.js
+      write → src/pages/office/OfficeReconciliation.jsx
+
+──────────────────────────────────────────────────────────────────────
+HOOKS  (data layer)
+──────────────────────────────────────────────────────────────────────
+  src/hooks/useCart.js
+    tables: carts, cart_items  |  ops: select, insert, update, delete  [realtime]
+  src/hooks/useIngredients.js
+    tables: ingredients  |  ops: select  [realtime]
+  src/hooks/useInventoryMovements.js
+    tables: inventory_movements  |  ops: select
+  src/hooks/useItemAvailability.js
+    tables: items  |  ops: select  [realtime]
+  src/hooks/useKitchenOrders.js
+    tables: v_clerk_active_orders, orders  |  ops: select, update  [realtime]
+  src/hooks/useMenu.js
+    tables: items  |  ops: select
+  src/hooks/useMessages.js
+    tables: messages  |  ops: select, insert, update  [realtime]
+  src/hooks/useReconciliations.js
+    tables: stock_reconciliations, ingredients, stock_reconciliation_lines, inventory_movements  |  ops: select, insert, update
+  src/hooks/useStaff.js
+    tables: entity_members, profiles  |  ops: select, update
+  src/hooks/useStockEntry.js
+    tables: inventory_movements  |  ops: select, insert  [realtime]
+  src/hooks/useWalkinOrder.js
+    tables: orders, order_items  |  ops: select, insert
+
+──────────────────────────────────────────────────────────────────────
+PAGES
+──────────────────────────────────────────────────────────────────────
+  src/components/office/OfficeLayout.jsx
+    tables: ingredients, messages  |  ops: select
+
+──────────────────────────────────────────────────────────────────────
+COMPONENTS
+──────────────────────────────────────────────────────────────────────
+  src/components/Header.jsx
+    tables: messages, orders  |  ops: select
+  src/components/office/IngredientPicker.jsx
+    tables: ingredients  |  ops: select
+  src/context/AuthProvider.jsx
+    tables: profiles  |  ops: select, insert
+  src/pages/Checkout.jsx
+    tables: carts, orders, order_items  |  ops: select, insert, update
+  src/pages/Login.jsx
+    tables: —  |  ops: —
+  src/pages/office/OfficeDashboard.jsx
+    tables: orders, ingredients, inventory_movements, stock_reconciliations  |  ops: select
+  src/pages/office/OfficeIngredients.jsx
+    tables: ingredients, inventory_movements  |  ops: select, insert, update
+  src/pages/office/OfficeLedger.jsx
+    tables: ingredients, inventory_movements, ingredient_stock_cache  |  ops: select
+  src/pages/office/OfficeMenuItems.jsx
+    tables: items, item_ingredients  |  ops: select, insert, update
+  src/pages/office/OfficeOrders.jsx
+    tables: orders, inventory_movements, order_status_log  |  ops: select
+  src/pages/office/OfficeRecipes.jsx
+    tables: items, item_ingredients  |  ops: select, insert, update
+  src/pages/office/OfficeReconciliation.jsx
+    tables: stock_reconciliations, stock_reconciliation_lines, ingredients, inventory_movements  |  ops: select, insert, update
+  src/pages/office/OfficeReports.jsx
+    tables: orders, order_items, inventory_movements, ingredients  |  ops: select
+  src/pages/office/OfficeStaff.jsx
+    tables: entity_members, profiles  |  ops: select, update
+  src/pages/office/stock/Adjustments.jsx
+    tables: ingredients  |  ops: select
+  src/pages/office/stock/ReceiveStock.jsx
+    tables: ingredients  |  ops: select, update
+  src/pages/office/stock/WastageSpoilage.jsx
+    tables: inventory_movements, ingredients  |  ops: select, insert
+  src/pages/Orders.jsx
+    tables: orders  |  ops: select
+  src/pages/Profile.jsx
+    tables: profiles  |  ops: select, update
+  src/pages/Register.jsx
+    tables: —  |  ops: —
+
+──────────────────────────────────────────────────────────────────────
+GAP ANALYSIS
+──────────────────────────────────────────────────────────────────────
+
+  Uncovered DB tables (3):
+    ⚠  availability
+    ⚠  entities
+    ⚠  mv_daily_consumption
+
+  Orphan frontend files (3):
+    ⚠  src/lib/supabaseClient.js
+    ⚠  src/pages/Login.jsx
+    ⚠  src/pages/Register.jsx
+
+  Read-only tables (2):
+    ℹ  ingredient_stock_cache
+    ℹ  order_status_log
+
+  Direct writes bypassing hooks (19):
+    ⚠  src/pages/Checkout.jsx  →  carts  [insert, update]
+    ⚠  src/pages/office/OfficeIngredients.jsx  →  ingredients  [insert, update]
+    ⚠  src/pages/office/OfficeReconciliation.jsx  →  ingredients  [insert, update]
+    ⚠  src/pages/office/stock/ReceiveStock.jsx  →  ingredients  [update]
+    ⚠  src/pages/office/stock/WastageSpoilage.jsx  →  ingredients  [insert]
+    ⚠  src/pages/office/OfficeIngredients.jsx  →  inventory_movements  [insert, update]
+    ⚠  src/pages/office/OfficeReconciliation.jsx  →  inventory_movements  [insert, update]
+    ⚠  src/pages/office/stock/WastageSpoilage.jsx  →  inventory_movements  [insert]
+    ⚠  src/pages/office/OfficeMenuItems.jsx  →  items  [insert, update]
+    ⚠  src/pages/office/OfficeRecipes.jsx  →  items  [insert, update]
+    ⚠  src/pages/Checkout.jsx  →  orders  [insert, update]
+    ⚠  src/pages/office/OfficeReconciliation.jsx  →  stock_reconciliations  [insert, update]
+    ⚠  src/pages/office/OfficeReconciliation.jsx  →  stock_reconciliation_lines  [insert, update]
+    ⚠  src/pages/office/OfficeStaff.jsx  →  entity_members  [update]
+    ⚠  src/pages/office/OfficeStaff.jsx  →  profiles  [update]
+    ⚠  src/pages/Profile.jsx  →  profiles  [update]
+    ⚠  src/pages/Checkout.jsx  →  order_items  [insert, update]
+    ⚠  src/pages/office/OfficeMenuItems.jsx  →  item_ingredients  [insert, update]
+    ⚠  src/pages/office/OfficeRecipes.jsx  →  item_ingredients  [insert, update]
+
+──────────────────────────────────────────────────────────────────────
+ENUM CATALOGUE
+──────────────────────────────────────────────────────────────────────
+
+======================================================================

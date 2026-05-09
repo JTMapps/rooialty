@@ -9,7 +9,8 @@ import { page } from "../styles/page";
 import { form } from "../styles/forms";
 
 export default function Checkout() {
-  const { user }                   = useAuth();
+  // Add entityId to destructuring
+  const { user, entityId } = useAuth();
   const { cart, items, fetchCart } = useCart();
   const navigate                   = useNavigate();
   const [loading, setLoading]      = useState(false);
@@ -31,24 +32,28 @@ export default function Checkout() {
         .update({ status: "checked_out" })
         .eq("id", cart.id);
 
+      // Order insert — add entity_id
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
-          user_id:       user.id,
-          cart_id:       cart.id,
-          total_price:   total,
-          delivery_type: "collect",
+          user_id:             user.id,
+          cart_id:             cart.id,
+          entity_id:           entityId,      // ADD THIS
+          total_price:         total,
+          delivery_type:       "collect",
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
+      // Order items insert — add unit_price_at_order (was missing entirely)
       await supabase.from("order_items").insert(
         items.map((i) => ({
-          order_id: order.id,
-          item_id:  i.item.id,
-          quantity: i.quantity,
+          order_id:            order.id,
+          item_id:             i.item.id,
+          quantity:            i.quantity,
+          unit_price_at_order: i.item.price,  // ADD THIS — required column
         }))
       );
 

@@ -6,8 +6,7 @@ every .js and .jsx file found.
 """
 
 from pathlib import Path
-from processors.query_extractor import extract_queries_from_file
-
+from ..processors.query_extractor import extract_queries_from_file
 
 def scan_frontend(src_path: Path) -> list[dict]:
     """

@@ -1,103 +1,218 @@
-"""
-pipeline.py  –  rooialty_ai_rag
+# rooialty_ai_rag/pipeline.py
+# Full system-architecture RAG pipeline.
+# Uses actual exported functions from each module.
 
-Entry point.  Run from inside the rooialty_ai_rag/ directory:
-
-    cd rooialty_ai_rag
-    python pipeline.py
-
-Or from the project root:
-
-    python rooialty_ai_rag/pipeline.py
-"""
-
-import sys
 from pathlib import Path
 
-# ── Make sure sibling packages resolve correctly regardless of CWD ────────────
-_HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+from .ingest.db_loader        import load_db_output, load_schema, extract_table_names
+from .ingest.frontend_scanner import scan_frontend
+from .graph.builder           import build_feature_graph
+from .output.formatter        import format_context
 
-from ingest.frontend_scanner import scan_frontend
-from ingest.db_loader        import load_db_output, load_schema, extract_table_names
-from graph.builder           import build_feature_graph
-from output.formatter        import format_for_claude, write_outputs
+# ── Paths (resolved relative to this file's location) ────────────────────────
+_ROOT       = Path(__file__).parent.parent          # C:\Users\tshep\Rooialty
+_SRC        = _ROOT / "src"
+_DB_OUTPUT  = _ROOT / "rooialty_ai" / "output"
+_SCHEMA_DIR = _ROOT / "schema"
 
-
-# ── Path configuration ────────────────────────────────────────────────────────
-ROOT          = _HERE.parent                        # Rooialty/
-SRC_PATH      = ROOT / "src"                        # Rooialty/src/
-DB_OUTPUT_DIR = ROOT / "rooialty_ai" / "output"    # Rooialty/rooialty_ai/output/
-SCHEMA_DIR    = ROOT / "schema"                     # Rooialty/schema/
-OUTPUT_DIR    = _HERE / "output"                    # Rooialty/rooialty_ai_rag/output/
+DIVIDER = "═" * 60
 
 
-def main():
-    print("\n" + "═" * 60)
-    print("  ROOIALTY RAG PIPELINE")
-    print("═" * 60)
+def run():
+    print(f"\n{DIVIDER}")
+    print("  ROOIALTY RAG PIPELINE  —  Full Architecture Analysis")
+    print(f"{DIVIDER}\n")
 
-    # ── Step 1: Scan frontend ─────────────────────────────────────────────────
-    print(f"\n🔍  Scanning frontend:  {SRC_PATH}")
-    scan_result = scan_frontend(SRC_PATH)
-    print(
-        f"    ✓ {scan_result['total_scanned']} files scanned, "
-        f"{scan_result['total_supabase']} use Supabase"
-    )
+    # ── 1. Frontend scan ──────────────────────────────────────────
+    scan = scan_frontend(_SRC)
+    all_files      = scan["all_files"]
+    supabase_files = scan["supabase_files"]
+    print(f"🔍  Scanning frontend:  {_SRC}")
+    print(f"    ✓ {scan['total_scanned']} files scanned, "
+          f"{scan['total_supabase']} use Supabase\n")
 
-    # ── Step 2: Load DB knowledge ─────────────────────────────────────────────
-    print(f"\n🗄️   Loading DB output: {DB_OUTPUT_DIR}")
-    db_output = load_db_output(DB_OUTPUT_DIR)
-    print(f"    ✓ {len(db_output)} table description files loaded")
-
-    print(f"\n📐  Loading schema:    {SCHEMA_DIR}")
-    schema = load_schema(SCHEMA_DIR)
+    # ── 2. DB descriptions + schema ───────────────────────────────
+    db_descriptions = load_db_output(_DB_OUTPUT)
+    schema          = load_schema(_SCHEMA_DIR)
+    known_tables    = extract_table_names(db_descriptions)
+    print(f"🗄️   Loading DB output: {_DB_OUTPUT}")
+    print(f"    ✓ {len(db_descriptions)} table description files loaded\n")
+    print(f"📐  Loading schema:    {_SCHEMA_DIR}")
     print(f"    ✓ {len(schema)} schema artefacts loaded")
+    print(f"    ✓ {len(known_tables)} known DB tables: {known_tables}\n")
 
-    db_table_names = extract_table_names(db_output)
-    print(f"    ✓ {len(db_table_names)} known DB tables: {db_table_names}")
-
-    # ── Step 3: Build relationship graph ─────────────────────────────────────
-    print("\n🧠  Building relationship graph…")
-    graph = build_feature_graph(scan_result, db_table_names)
+    # ── 3. Relationship graph ─────────────────────────────────────
+    graph = build_feature_graph(scan, known_tables)
     stats = graph["stats"]
-    print(
-        f"    ✓ {stats['total_supabase_files']} frontend files  →  "
-        f"{stats['total_tables_referenced']}/{stats['total_known_tables']} DB tables"
-    )
+    print(f"🧠  Building relationship graph…")
+    print(f"    ✓ {stats['total_supabase_files']} frontend files  →  "
+          f"{stats['total_tables_referenced']}/{stats['total_known_tables']} DB tables")
 
     if graph["orphan_tables"]:
         print(f"    ⚠️  Orphan DB tables (never queried): {graph['orphan_tables']}")
     if graph["orphan_files"]:
         print(f"    ⚠️  Orphan frontend files (no known table): {graph['orphan_files']}")
+    print()
 
-    # ── Step 4: Recipes bug report ────────────────────────────────────────────
-    ra = graph["recipes_analysis"]
-    print("\n🍽️   Recipes page analysis:")
-    status = "❌  GAP DETECTED" if ra["gap_detected"] else "✅  Coverage OK"
-    print(f"    {status}")
-    print(f"    {ra['gap_description']}")
-    print("\n    Recommended fix:")
-    for line in ra["recommended_fix"].splitlines():
-        print(f"      {line}")
+    # ── 4. Full architecture analysis ────────────────────────────
+    print(f"🏗️   Running full architecture analysis…")
+    architecture = _analyse_architecture(supabase_files, graph, known_tables, schema)
+    for line in architecture["summary_lines"]:
+        print(f"    {line}")
+    print()
 
-    # ── Step 5: Format & write output ─────────────────────────────────────────
-    print(f"\n📦  Formatting context for Claude…")
-    context = format_for_claude(graph, db_output, schema, scan_result)
-
-    json_path, txt_path = write_outputs(context, OUTPUT_DIR)
-    print(f"\n✅  Done!")
-    print(f"    JSON  →  {json_path.resolve()}")
-    print(f"    TXT   →  {txt_path.resolve()}")
-    print(
-        "\n    Feed claude_context.json to Claude Sonnet with the prompt:\n"
-        '    "Analyse the primary_bug section and show me the exact code\n'
-        '     I need to add/change in OfficeRecipes.jsx to fix the\n'
-        '     ingredient-loading issue."\n'
+    # ── 5. Format + write output ──────────────────────────────────
+    print(f"📦  Formatting context for Claude…\n")
+    json_path, txt_path = format_context(
+        all_files       = all_files,
+        supabase_files  = supabase_files,
+        db_descriptions = db_descriptions,
+        schema          = schema,
+        known_tables    = known_tables,
+        graph           = graph,
+        architecture    = architecture,
     )
-    print("═" * 60 + "\n")
+
+    print(f"✅  Done!")
+    print(f"    JSON  →  {json_path}")
+    print(f"    TXT   →  {txt_path}")
+    print(f"\n    Feed claude_context.json to Claude with the prompt:")
+    print(f'    "Using the architecture map, explain how [feature]')
+    print(f'     works end-to-end from the frontend to the database."')
+    print(f"\n{DIVIDER}\n")
+
+
+# ─────────────────────────────────────────────────────────────────
+# Full architecture analysis
+# ─────────────────────────────────────────────────────────────────
+
+def _analyse_architecture(supabase_files, graph, known_tables, schema):
+    """
+    Produces a full-system awareness document across ALL tables and files:
+    - Per-table: readers, writers, realtime, filtered columns
+    - Per-file:  role classification (hook / page / component / utility)
+    - Cross-cutting: read-only tables, direct writes bypassing hooks,
+      enum usage, filtered column catalogue
+    """
+    table_to_files = graph["table_to_files"]   # { table: [edge, ...] }
+
+    # ── Classify files by role ────────────────────────────────────
+    hooks      = {}
+    pages      = {}
+    components = {}
+    utilities  = {}
+
+    for entry in supabase_files:
+        short = _short(entry["file"])
+        role  = entry.get("role", "utility")
+        bucket = (
+            hooks      if role == "hook"      else
+            pages      if role == "page"      else
+            components if role == "component" else
+            utilities
+        )
+        bucket[short] = {
+            "tables":     entry.get("tables", []),
+            "operations": entry.get("operations", []),
+            "realtime":   entry.get("realtime", False),
+        }
+
+    # ── Per-table operation coverage ─────────────────────────────
+    table_ops = {}
+    for table in known_tables:
+        edges    = table_to_files.get(table, [])
+        ops      = set()
+        realtime = False
+        readers  = []
+        writers  = []
+        for e in edges:
+            ops.update(e.get("operations", []))
+            if e.get("realtime"):
+                realtime = True
+            if any(o in e.get("operations", []) for o in ("insert", "update", "delete", "upsert")):
+                writers.append(e["file"])
+            if "select" in e.get("operations", []):
+                readers.append(e["file"])
+        table_ops[table] = {
+            "operations": sorted(ops),
+            "realtime":   realtime,
+            "readers":    readers,
+            "writers":    writers,
+        }
+
+    # ── Read-only tables ──────────────────────────────────────────
+    read_only_tables = [
+        t for t, info in table_ops.items()
+        if info["operations"] and
+           not any(o in info["operations"] for o in ("insert", "update", "delete", "upsert"))
+    ]
+
+    # ── Direct writes from pages/components (bypassing hooks) ────
+    direct_write_files = []
+    for table, edges in table_to_files.items():
+        for e in edges:
+            f = e.get("file", "")
+            is_page_or_component = "/pages/" in f or "/components/" in f
+            write_ops = [o for o in e.get("operations", [])
+                         if o in ("insert", "update", "delete", "upsert")]
+            if is_page_or_component and write_ops:
+                direct_write_files.append({
+                    "file":  f,
+                    "table": table,
+                    "ops":   write_ops,
+                })
+
+    # ── Enum catalogue ────────────────────────────────────────────
+    enum_types = {}
+    for item in schema.get("enums", []):
+        name = item.get("enum_name") or item.get("name", "")
+        vals = item.get("values") or item.get("enum_values", [])
+        if name:
+            enum_types[name] = vals
+
+    # ── Filtered columns per table ────────────────────────────────
+    filtered_columns = {}
+    for table, edges in table_to_files.items():
+        cols = set()
+        for e in edges:
+            for f in e.get("filters", []):
+                col = f.get("column")
+                if col:
+                    cols.add(col)
+        if cols:
+            filtered_columns[table] = sorted(cols)
+
+    # ── Summary lines for terminal ────────────────────────────────
+    summary_lines = [
+        f"✓ {len(known_tables)} DB tables analysed",
+        f"✓ {len([t for t in table_ops if table_ops[t]['operations']])} tables have frontend coverage",
+        f"✓ {len(read_only_tables)} read-only tables: {read_only_tables}",
+        f"✓ {len(direct_write_files)} direct writes from pages/components",
+        f"✓ {len(graph['orphan_tables'])} uncovered DB tables: {graph['orphan_tables']}",
+        f"✓ {len(enum_types)} enums in schema",
+    ]
+
+    return {
+        "summary_lines":      summary_lines,
+        "table_ops":          table_ops,
+        "read_only_tables":   read_only_tables,
+        "direct_write_files": direct_write_files,
+        "enum_types":         enum_types,
+        "hooks":              hooks,
+        "pages":              pages,
+        "components":         components,
+        "utilities":          utilities,
+        "filtered_columns":   filtered_columns,
+        "uncovered_tables":   graph["orphan_tables"],
+    }
+
+
+def _short(file_path: str) -> str:
+    idx = file_path.replace("\\", "/").find("src/")
+    if idx != -1:
+        return file_path[idx:].replace("\\", "/")
+    return file_path.replace("\\", "/").split("/")[-1]
 
 
 if __name__ == "__main__":
-    main()
+    run()

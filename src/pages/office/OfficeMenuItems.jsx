@@ -5,12 +5,14 @@ import { btn } from "../../styles/components";
 import { office } from "../../styles/office";
 import { table } from "../../styles/table";
 import { form } from "../../styles/forms";
+import { useAuth } from "../../hooks/useAuth";
 
 const CATEGORIES = ["URBAN KOTAS", "ROOIALTY MEALS", "TO SHARE", "WINGS", "WING BAR", "COLD SERVES"];
 const ITEM_TYPES = ["food", "drink"];
 const EMPTY_FORM = { name: "", category: CATEGORIES[0], item_type: "food", price: "", in_stock: true };
 
 export default function OfficeMenuItems() {
+  const { entityId } = useAuth();
   const [items,        setItems]        = useState([]);
   const [availability, setAvailability] = useState({});
   const [loading,      setLoading]      = useState(true);
@@ -78,10 +80,11 @@ export default function OfficeMenuItems() {
     setSaving(true); setError("");
     const payload = {
       name:      formState.name.trim(),
-      category:  formState.category,
+      category:  formState.category, // should become a dynamic fetch from distinct items.category values for entity_id = current_entity
       item_type: formState.item_type,
       price:     Number(formState.price),
       in_stock:  formState.in_stock,
+      entity_id: entityId,   // ADD THIS
     };
     let err;
     if (editId) {

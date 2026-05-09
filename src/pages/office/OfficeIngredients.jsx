@@ -13,7 +13,9 @@ const UNITS = ["g", "kg", "ml", "l", "unit", "portion"];
 
 const EMPTY_FORM = { name: "", description: "", unit: "g", reorder_level: "", reorder_quantity: "", cost_per_unit: "", supplier_note: "" };
 
-export default function OfficeIngredients() {
+export default function OfficeIngredients()
+ {
+  const { entityId } = useAuth();
   const navigate = useNavigate();
   const [ingredients, setIngredients] = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -108,6 +110,7 @@ export default function OfficeIngredients() {
       reorder_quantity: formState.reorder_quantity !== "" ? Number(formState.reorder_quantity) : null,
       cost_per_unit:    formState.cost_per_unit !== "" ? Number(formState.cost_per_unit) : null,
       supplier_note:    formState.supplier_note.trim() || null,
+      entity_id:        entityId,
     };
 
     const { error: err } = editId

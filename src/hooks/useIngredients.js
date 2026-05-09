@@ -25,7 +25,7 @@ export default function useIngredients() {
   }, []);
 
   useEffect(() => {
-    fetch();
+    fetch();  //Supabase realtime filter entity_id=eq.${entityId} to the subscription (FUTURE)
 
     // Live stock updates
     const channel = supabase
