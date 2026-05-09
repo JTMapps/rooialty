@@ -7,27 +7,21 @@ const AuthContext = createContext(null);
 export default AuthContext;
 
 async function fetchOrCreateProfile(user) {
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("id, email, username, phone, is_active, last_seen_at, created_at")
-    // NOTE: no 'role' column — it no longer exists on profiles
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (existing) return existing;
-
   const username =
     user.user_metadata?.username ??
     user.email?.split("@")[0] ??
     user.id.slice(0, 8);
 
-  const { data: created } = await supabase
+  const { data } = await supabase
     .from("profiles")
-    .insert({ id: user.id, email: user.email ?? "", username })
-    .select()
+    .upsert(
+      { id: user.id, email: user.email ?? "", username },
+      { onConflict: "id", ignoreDuplicates: true }  // never overwrite existing username
+    )
+    .select("id, email, username, phone, is_active, last_seen_at, created_at")
     .single();
 
-  return created ?? null;
+  return data ?? null;
 }
 
 export function AuthProvider({ children }) {
