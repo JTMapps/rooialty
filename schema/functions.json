@@ -1,0 +1,173 @@
+[
+  {
+    "schema_name": "public",
+    "function_name": "auth_role",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "14",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.auth_role()\n RETURNS user_role\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\r\n  SELECT role FROM profiles WHERE id = auth.uid()\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "block_cart_mod_after_checkout",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.block_cart_mod_after_checkout()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE v_status cart_status;\r\nBEGIN\r\n  SELECT status INTO v_status FROM carts WHERE id = NEW.cart_id;\r\n\r\n  IF v_status = 'checked_out' THEN\r\n    RAISE EXCEPTION 'Cart locked';\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "check_stock_basic",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.check_stock_basic()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE\r\n  v_stock integer;\r\nBEGIN\r\n  SELECT stock_quantity\r\n  INTO v_stock\r\n  FROM items\r\n  WHERE id = NEW.item_id;\r\n\r\n  IF v_stock IS NULL THEN\r\n    RAISE EXCEPTION 'Item not found';\r\n  END IF;\r\n\r\n  IF NEW.quantity > v_stock THEN\r\n    RAISE EXCEPTION 'Not enough stock for item %', NEW.item_id;\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "current_entity_id",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "14",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.current_entity_id()\n RETURNS uuid\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$SELECT NULLIF(\r\n    (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'entity_id'),\r\n    ''\r\n  )::uuid;$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "current_entity_role",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "14",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.current_entity_role()\n RETURNS text\n LANGUAGE sql\n STABLE SECURITY DEFINER\nAS $function$\r\n  SELECT current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'entity_role';\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "custom_access_token_hook",
+    "arg_signature": "event jsonb",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event jsonb)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nDECLARE\n  v_user_id   uuid := (event->>'user_id')::uuid;\n  v_entity_id uuid;\n  v_role      text;\nBEGIN\n  -- Look up the user's active membership\n  SELECT em.entity_id, em.role\n    INTO v_entity_id, v_role\n  FROM public.entity_members em\n  WHERE em.profile_id = v_user_id\n    AND em.is_active  = true\n  ORDER BY em.joined_at ASC\n  LIMIT 1;\n\n  -- No membership found — return token unchanged (auth still succeeds)\n  IF v_entity_id IS NULL THEN\n    RETURN event;\n  END IF;\n\n  IF v_role IS NULL THEN\n    v_role := 'user';\n  END IF;\n\n  -- Inject entity context into JWT app_metadata\n  RETURN jsonb_set(\n    jsonb_set(\n      event,\n      '{claims,app_metadata,entity_id}',\n      to_jsonb(v_entity_id::text)\n    ),\n    '{claims,app_metadata,entity_role}',\n    to_jsonb(v_role)\n  );\n\nEXCEPTION WHEN OTHERS THEN\n  RAISE WARNING 'custom_access_token_hook error for user %: %', v_user_id, SQLERRM;\n  RETURN event;\nEND;\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "ensure_cart_checked_out",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.ensure_cart_checked_out()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  -- Walk-in orders have no cart — skip the check\r\n  IF NEW.is_walkin = true THEN\r\n    RETURN NEW;\r\n  END IF;\r\n\r\n  IF NEW.cart_id IS NULL THEN\r\n    RAISE EXCEPTION 'Order must reference a cart';\r\n  END IF;\r\n\r\n  IF NOT EXISTS (\r\n    SELECT 1 FROM carts\r\n    WHERE id = NEW.cart_id AND status = 'checked_out'\r\n  ) THEN\r\n    RAISE EXCEPTION 'Cart must be checked out before creating order';\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "fn_deduct_stock_on_confirmation",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_deduct_stock_on_confirmation()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nDECLARE\r\n  v_item         RECORD;\r\n  v_ingredient   RECORD;\r\n  v_current_stock numeric(10,4);\r\n  v_total_needed  numeric(10,4);\r\nBEGIN\r\n  -- Gate: only fire on confirmation transitions\r\n  IF NEW.to_status <> 'confirmed' THEN\r\n    RETURN NEW;\r\n  END IF;\r\n\r\n  -- Gate: idempotency — check if deduction already exists for this order\r\n  -- This prevents double-deduction if somehow the trigger fires twice\r\n  IF EXISTS (\r\n    SELECT 1 FROM inventory_movements\r\n    WHERE order_id = (\r\n      SELECT order_id FROM order_status_log WHERE id = NEW.id\r\n    )\r\n    AND reason = 'order_consumption'\r\n  ) THEN\r\n    RAISE EXCEPTION\r\n      'Inventory already deducted for order %. Duplicate confirmation detected.',\r\n      NEW.order_id;\r\n  END IF;\r\n\r\n  -- Iterate over each order line item\r\n  FOR v_item IN\r\n    SELECT\r\n      oi.id            AS order_item_id,\r\n      oi.item_id,\r\n      oi.quantity      AS ordered_quantity\r\n    FROM order_items oi\r\n    WHERE oi.order_id = NEW.order_id\r\n      AND oi.deleted_at IS NULL\r\n  LOOP\r\n    -- For each ingredient in this item's BOM\r\n    FOR v_ingredient IN\r\n      SELECT\r\n        ii.ingredient_id,\r\n        ii.quantity_required,\r\n        i.unit,\r\n        i.name          AS ingredient_name,\r\n        i.cost_per_unit\r\n      FROM item_ingredients ii\r\n      JOIN ingredients i ON i.id = ii.ingredient_id\r\n      WHERE ii.item_id = v_item.item_id\r\n        AND ii.deleted_at IS NULL\r\n        AND i.deleted_at IS NULL\r\n      FOR UPDATE OF i\r\n    LOOP\r\n      v_total_needed := v_ingredient.quantity_required * v_item.ordered_quantity;\r\n\r\n      -- Read current ledger balance (from cache for performance, validated below)\r\n      SELECT current_stock INTO v_current_stock\r\n      FROM ingredient_stock_cache\r\n      WHERE ingredient_id = v_ingredient.ingredient_id\r\n      FOR UPDATE;  -- Lock cache row too\r\n\r\n      -- Stock guard: prevent overselling at database level\r\n      IF v_current_stock < v_total_needed THEN\r\n        RAISE EXCEPTION\r\n          'Insufficient stock for ingredient \"%\" (id: %). Required: %, Available: %',\r\n          v_ingredient.ingredient_name,\r\n          v_ingredient.ingredient_id,\r\n          v_total_needed,\r\n          v_current_stock;\r\n      END IF;\r\n\r\n      -- Insert negative movement (deduction)\r\n      INSERT INTO inventory_movements (\r\n        ingredient_id,\r\n        delta,\r\n        reason,\r\n        order_id,\r\n        order_item_id,\r\n        performed_by,\r\n        unit_cost_at_time,\r\n        note\r\n      ) VALUES (\r\n        v_ingredient.ingredient_id,\r\n        -v_total_needed,                       -- negative = outflow\r\n        'order_consumption',\r\n        NEW.order_id,\r\n        v_item.order_item_id,\r\n        NEW.changed_by,                        -- the clerk who confirmed\r\n        v_ingredient.cost_per_unit,\r\n        'Auto-deducted on order confirmation'\r\n      );\r\n\r\n    END LOOP;\r\n  END LOOP;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "fn_lock_movement_row",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_lock_movement_row()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  RAISE EXCEPTION\r\n    'inventory_movements rows are immutable. Attempted % on row id=%. '\r\n    'To correct a movement, insert a compensating row.',\r\n    TG_OP, OLD.id;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "fn_reverse_stock_on_cancellation",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_reverse_stock_on_cancellation()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nDECLARE\r\n  v_move RECORD;\r\nBEGIN\r\n  IF NEW.to_status <> 'cancelled'\r\n     OR NEW.from_status NOT IN ('confirmed', 'ready') THEN\r\n    RETURN NEW;\r\n  END IF;\r\n\r\n  IF EXISTS (\r\n    SELECT 1\r\n    FROM inventory_movements\r\n    WHERE order_id = NEW.order_id\r\n      AND reason = 'cancellation_reversal'\r\n  ) THEN\r\n    RAISE EXCEPTION\r\n      'Cancellation reversal already recorded for order %. Duplicate detected.',\r\n      NEW.order_id;\r\n  END IF;\r\n\r\n  FOR v_move IN\r\n    SELECT id, ingredient_id, delta, unit_cost_at_time, order_item_id\r\n    FROM inventory_movements\r\n    WHERE order_id = NEW.order_id\r\n      AND reason = 'order_consumption'\r\n  LOOP\r\n    INSERT INTO inventory_movements (\r\n      ingredient_id,\r\n      delta,\r\n      reason,\r\n      order_id,\r\n      order_item_id,\r\n      performed_by,\r\n      unit_cost_at_time,\r\n      note\r\n    ) VALUES (\r\n      v_move.ingredient_id,\r\n      -v_move.delta,\r\n      'cancellation_reversal',\r\n      NEW.order_id,\r\n      v_move.order_item_id,\r\n      NEW.changed_by,\r\n      v_move.unit_cost_at_time,\r\n      'Auto-reversed on order cancellation from status: ' || NEW.from_status\r\n    );\r\n  END LOOP;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "fn_set_updated_at",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_set_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  NEW.updated_at = now();\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "fn_update_stock_cache",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_update_stock_cache()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nBEGIN\r\n  INSERT INTO ingredient_stock_cache (ingredient_id, current_stock, last_updated_at)\r\n  VALUES (NEW.ingredient_id, NEW.delta, now())\r\n  ON CONFLICT (ingredient_id) DO UPDATE\r\n    SET current_stock   = ingredient_stock_cache.current_stock + EXCLUDED.current_stock,\r\n        last_updated_at = now();\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "guard_order_placement",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.guard_order_placement()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  -- Clerks may only insert walk-in orders\r\n  IF (SELECT role FROM profiles WHERE id = auth.uid()) = 'clerk' THEN\r\n    IF NEW.is_walkin IS DISTINCT FROM true THEN\r\n      RAISE EXCEPTION 'Clerks may only place walk-in orders.';\r\n    END IF;\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "guard_order_status_transition",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.guard_order_status_transition()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  IF OLD.status = NEW.status THEN RETURN NEW; END IF;\r\n\r\n  IF OLD.status IN ('completed','cancelled') THEN\r\n    RAISE EXCEPTION 'Order is finalized';\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "handle_new_user",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\nDECLARE\n  v_entity_id uuid;\nBEGIN\n  -- 1. Profile row\n  INSERT INTO public.profiles (id, email, username)\n  VALUES (\n    NEW.id,\n    NEW.email,\n    COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1))\n  )\n  ON CONFLICT (id) DO NOTHING;\n\n  -- 2. Resolve single active entity\n  SELECT id INTO v_entity_id\n  FROM public.entities\n  WHERE is_active = true\n  ORDER BY created_at ASC\n  LIMIT 1;\n\n  -- 3. Auto-enroll as 'user' (office/clerk must be manually elevated)\n  IF v_entity_id IS NOT NULL THEN\n    INSERT INTO public.entity_members (entity_id, profile_id, role, is_active, joined_at)\n    VALUES (v_entity_id, NEW.id, 'user', true, now())\n    ON CONFLICT (entity_id, profile_id) DO NOTHING;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "log_order_status_change",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": true,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.log_order_status_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\nAS $function$\r\nBEGIN\r\n  IF TG_OP = 'INSERT' THEN\r\n    INSERT INTO order_status_log (order_id, from_status, to_status, changed_by)\r\n    VALUES (NEW.id, NULL, NEW.status, NEW.user_id);\r\n  ELSE\r\n    INSERT INTO order_status_log (order_id, from_status, to_status, changed_by)\r\n    VALUES (NEW.id, OLD.status, NEW.status, auth.uid());\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "populate_order_item_price",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.populate_order_item_price()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  SELECT price\r\n  INTO NEW.unit_price_at_order\r\n  FROM items\r\n  WHERE id = NEW.item_id;\r\n\r\n  IF NEW.unit_price_at_order IS NULL THEN\r\n    RAISE EXCEPTION 'Item not found or price missing';\r\n  END IF;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "rebuild_stock_cache",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE PROCEDURE public.rebuild_stock_cache()\n LANGUAGE plpgsql\nAS $procedure$\r\nBEGIN\r\n  -- Disable trigger temporarily (requires superuser in Supabase)\r\n  -- Alternative: use a flag column approach — see note below\r\n  DELETE FROM ingredient_stock_cache;\r\n\r\n  INSERT INTO ingredient_stock_cache (ingredient_id, current_stock, last_updated_at)\r\n  SELECT\r\n    ingredient_id,\r\n    COALESCE(SUM(delta), 0),\r\n    now()\r\n  FROM inventory_movements\r\n  GROUP BY ingredient_id;\r\nEND;\r\n$procedure$\n"
+  },
+  {
+    "schema_name": "public",
+    "function_name": "update_order_total",
+    "arg_signature": "",
+    "owner_role": "postgres",
+    "security_definer": false,
+    "language": "13619",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.update_order_total()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  UPDATE orders\r\n  SET total_price = (\r\n    SELECT SUM(quantity * unit_price_at_order)\r\n    FROM order_items\r\n    WHERE order_id = NEW.order_id\r\n  )\r\n  WHERE id = NEW.order_id;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  }
+]

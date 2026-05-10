@@ -91,6 +91,24 @@
   },
   {
     "schema_name": "public",
+    "table_name": "entity_categories",
+    "constraint_name": "entity_categories_entity_id_fkey",
+    "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "constraint_name": "entity_categories_entity_id_name_key",
+    "constraint_definition": "UNIQUE (entity_id, name)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "constraint_name": "entity_categories_pkey",
+    "constraint_definition": "PRIMARY KEY (id)"
+  },
+  {
+    "schema_name": "public",
     "table_name": "entity_members",
     "constraint_name": "entity_members_entity_id_fkey",
     "constraint_definition": "FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE"

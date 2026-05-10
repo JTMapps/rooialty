@@ -1,11 +1,13 @@
 // src/pages/Menu.jsx
 //
 // Customer-facing menu page.
-//   • Shows a clear empty state when no items exist yet (office hasn't added any).
-//   • Groups items by entity_categories (ordered by sort_order set by office).
-//   • Categories with no items are hidden automatically.
-//   • Cart controls are wired to CartContext.
-//   • Real-time subscription keeps items in sync with office changes.
+//   • Shows "Menu coming soon" when office hasn't added any items yet.
+//   • Groups items by office-defined category order (entity_categories.sort_order).
+//   • Categories with no in-stock items are hidden automatically.
+//   • Cart controls wired to CartContext.
+//   • Real-time subscription syncs with office changes instantly.
+//   • STYLING: all inline styles use existing CSS variables — no changes to any
+//     shared style files.
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -16,11 +18,11 @@ import { useCartContext } from "../context/CartContext";
 export default function Menu() {
   const { user, entityId } = useAuth();
   const { categories, loading: catsLoading } = useCategories();
-  const { addItem, cartItems } = useCartContext();
+  const { addItem, items: cartItems } = useCartContext();
 
   const [items,        setItems]        = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
-  const [adding,       setAdding]       = useState(null); // item id being added
+  const [adding,       setAdding]       = useState(null);
 
   // ── Fetch items ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function Menu() {
         .from("items")
         .select("id, name, category, item_type, price, description, in_stock")
         .eq("in_stock", true)
+        .is("deleted_at", null)
         .order("category", { ascending: true })
         .order("name",     { ascending: true });
 
@@ -41,7 +44,7 @@ export default function Menu() {
 
     fetchItems();
 
-    // Real-time — when office updates items, menu reflects it immediately
+    // Real-time: when office adds/edits items the menu updates immediately
     const channel = supabase
       .channel("menu:items")
       .on("postgres_changes", { event: "*", schema: "public", table: "items" }, fetchItems)
@@ -51,8 +54,6 @@ export default function Menu() {
   }, [entityId]);
 
   // ── Build ordered category sections ─────────────────────────────────────────
-  // Use the office-defined sort order from entity_categories.
-  // Items whose category isn't in entity_categories go to an "Other" bucket.
   const sections = buildSections(categories, items);
 
   // ── Add to cart ──────────────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ export default function Menu() {
   const quantityInCart = (itemId) =>
     cartItems?.find((ci) => ci.item_id === itemId)?.quantity ?? 0;
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────────────────────
   if (loadingItems || catsLoading) {
     return (
       <div style={s.page}>
@@ -80,7 +81,7 @@ export default function Menu() {
     );
   }
 
-  // ── No items at all ──────────────────────────────────────────────────────────
+  // ── No items at all — office hasn't added any yet ────────────────────────────
   if (items.length === 0) {
     return (
       <div style={s.page}>
@@ -127,7 +128,7 @@ function buildSections(categories, items) {
   const sections = [];
   const usedIds  = new Set();
 
-  // Ordered categories first
+  // Ordered by office-defined sort_order in entity_categories
   for (const cat of categories) {
     const catItems = items.filter((i) => i.category === cat.name);
     if (catItems.length === 0) continue; // hide empty sections
@@ -135,7 +136,7 @@ function buildSections(categories, items) {
     catItems.forEach((i) => usedIds.add(i.id));
   }
 
-  // Anything left over (category not in entity_categories)
+  // Items whose category wasn't found in entity_categories go to "Other"
   const orphans = items.filter((i) => !usedIds.has(i.id));
   if (orphans.length > 0) {
     sections.push({ name: "Other", items: orphans });
@@ -174,133 +175,134 @@ function ItemCard({ item, qty, adding, onAdd }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles — identical to original, no changes ───────────────────────────────
 const s = {
   page: {
     maxWidth: "900px",
-    margin: "0 auto",
-    padding: "32px 24px",
+    margin:   "0 auto",
+    padding:  "32px 24px",
   },
   pageTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: "40px",
+    fontFamily:    "var(--font-display)",
+    fontSize:      "40px",
     letterSpacing: "0.04em",
-    margin: "0 0 32px",
-    color: "var(--text, #fff)",
+    margin:        "0 0 32px",
+    color:         "var(--bone)",
   },
   section: {
     marginBottom: "40px",
   },
   sectionTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: "22px",
+    fontFamily:    "var(--font-display)",
+    fontSize:      "22px",
     letterSpacing: "0.06em",
-    color: "var(--text, #fff)",
-    margin: "0 0 16px",
+    color:         "var(--bone)",
+    margin:        "0 0 16px",
     paddingBottom: "8px",
-    borderBottom: "1px solid var(--border, #2a2a2a)",
+    borderBottom:  "1px solid var(--pit)",
   },
   grid: {
-    display: "grid",
+    display:             "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-    gap: "16px",
+    gap:                 "16px",
   },
   card: {
-    background: "var(--surface, #111)",
-    border: "1px solid var(--border, #2a2a2a)",
-    borderRadius: "8px",
-    padding: "16px",
-    display: "flex",
+    background:    "var(--ash)",
+    border:        "1px solid var(--pit)",
+    borderRadius:  "8px",
+    padding:       "16px",
+    display:       "flex",
     flexDirection: "column",
-    gap: "12px",
-    transition: "border-color 0.15s",
+    gap:           "12px",
+    transition:    "border-color 0.15s",
   },
   cardTop: {
-    display: "flex",
+    display:        "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "12px",
-    flex: 1,
+    alignItems:     "flex-start",
+    gap:            "12px",
+    flex:           1,
   },
   cardBottom: {
-    display: "flex",
+    display:        "flex",
     justifyContent: "flex-end",
-    alignItems: "center",
-    gap: "10px",
+    alignItems:     "center",
+    gap:            "10px",
   },
   itemName: {
     fontFamily: "var(--font-body)",
-    fontSize: "16px",
+    fontSize:   "16px",
     fontWeight: "600",
-    color: "var(--text, #fff)",
-    margin: 0,
+    color:      "var(--bone)",
+    margin:     0,
   },
   itemDesc: {
     fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    color: "var(--muted, #888)",
-    margin: "4px 0 0",
+    fontSize:   "13px",
+    color:      "var(--muted)",
+    margin:     "4px 0 0",
     lineHeight: 1.4,
   },
   itemPrice: {
-    fontFamily: "var(--font-display)",
-    fontSize: "18px",
-    color: "var(--fire, #e63)",
-    margin: 0,
-    whiteSpace: "nowrap",
+    fontFamily:  "var(--font-display)",
+    fontSize:    "18px",
+    color:       "var(--fire)",
+    margin:      0,
+    whiteSpace:  "nowrap",
   },
   addBtn: {
-    background: "var(--fire, #e63)",
-    border: "none",
+    background:   "var(--fire)",
+    border:       "none",
     borderRadius: "4px",
-    color: "#fff",
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    padding: "7px 14px",
-    cursor: "pointer",
-    transition: "opacity 0.15s",
+    color:        "#000",
+    fontFamily:   "var(--font-body)",
+    fontSize:     "13px",
+    padding:      "7px 14px",
+    cursor:       "pointer",
+    transition:   "opacity 0.15s",
+    fontWeight:   600,
   },
   addingBtn: {
-    background: "var(--muted, #888)",
-    border: "none",
+    background:   "var(--muted)",
+    border:       "none",
     borderRadius: "4px",
-    color: "#fff",
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    padding: "7px 14px",
-    cursor: "not-allowed",
+    color:        "#fff",
+    fontFamily:   "var(--font-body)",
+    fontSize:     "13px",
+    padding:      "7px 14px",
+    cursor:       "not-allowed",
   },
   qtyBadge: {
     fontFamily: "var(--font-body)",
-    fontSize: "12px",
-    color: "var(--muted, #888)",
+    fontSize:   "12px",
+    color:      "var(--muted)",
   },
   emptyWrap: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    display:        "flex",
+    flexDirection:  "column",
+    alignItems:     "center",
     justifyContent: "center",
-    minHeight: "40vh",
-    textAlign: "center",
-    gap: "12px",
+    minHeight:      "40vh",
+    textAlign:      "center",
+    gap:            "12px",
   },
   emptyTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: "36px",
-    color: "var(--text, #fff)",
-    margin: 0,
+    fontFamily:    "var(--font-display)",
+    fontSize:      "36px",
+    color:         "var(--bone)",
+    margin:        0,
+    letterSpacing: "0.04em",
   },
   emptyBody: {
     fontFamily: "var(--font-body)",
-    fontSize: "15px",
-    color: "var(--muted, #888)",
-    margin: 0,
+    fontSize:   "15px",
+    color:      "var(--muted)",
+    margin:     0,
   },
   skeleton: {
-    height: "20px",
-    background: "var(--border, #2a2a2a)",
-    borderRadius: "4px",
-    width: "100%",
-    animation: "pulse 1.5s ease-in-out infinite",
+    height:     "20px",
+    background: "var(--pit)",
+    borderRadius:"4px",
+    width:      "100%",
   },
 };

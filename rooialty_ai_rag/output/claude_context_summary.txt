@@ -1,12 +1,12 @@
 ======================================================================
 ROOIALTY — FULL SYSTEM ARCHITECTURE SUMMARY
-Generated: 2026-05-09T19:43:45.017179+00:00
+Generated: 2026-05-10T10:24:43.546503+00:00
 ======================================================================
 
-Frontend files scanned : 67
-Files using Supabase   : 33
-DB tables known        : 18
-DB tables with coverage: 16
+Frontend files scanned : 68
+Files using Supabase   : 35
+DB tables known        : 19
+DB tables with coverage: 17
 
 ──────────────────────────────────────────────────────────────────────
 TABLE PROFILES
@@ -41,6 +41,14 @@ TABLE PROFILES
     Readers    : 0 file(s)
     Writers    : 0 file(s)
     Filtered on: —
+
+  ENTITY_CATEGORIES
+    Operations : insert, select, update
+    Readers    : 1 file(s)
+    Writers    : 1 file(s)
+    Filtered on: id
+      read  ← src/hooks/useCategories.js
+      write → src/hooks/useCategories.js
 
   ENTITY_MEMBERS
     Operations : select, update
@@ -105,21 +113,20 @@ TABLE PROFILES
 
   ITEM_INGREDIENTS
     Operations : insert, select, update
-    Readers    : 2 file(s)
-    Writers    : 2 file(s)
+    Readers    : 1 file(s)
+    Writers    : 1 file(s)
     Filtered on: id, item_id
-      read  ← src/pages/office/OfficeMenuItems.jsx
       read  ← src/pages/office/OfficeRecipes.jsx
-      write → src/pages/office/OfficeMenuItems.jsx
       write → src/pages/office/OfficeRecipes.jsx
 
   ITEMS
     Operations : insert, select, update
-    Readers    : 4 file(s)
+    Readers    : 5 file(s)
     Writers    : 2 file(s)
-    Filtered on: id, item_id
+    Filtered on: id, in_stock, item_id
       read  ← src/hooks/useItemAvailability.js
       read  ← src/hooks/useMenu.js
+      read  ← src/pages/Menu.jsx
       read  ← src/pages/office/OfficeMenuItems.jsx
       read  ← src/pages/office/OfficeRecipes.jsx
       write → src/pages/office/OfficeMenuItems.jsx
@@ -129,7 +136,7 @@ TABLE PROFILES
     Operations : insert, select, update
     Readers    : 3 file(s)
     Writers    : 1 file(s)
-    Filtered on: entity_id, id, is_read, recipient_id, sender_id, status, user_id
+    Filtered on: entity_id, id, is_read, recipient_id, sender_id
       read  ← src/hooks/useMessages.js
       read  ← src/components/Header.jsx
       read  ← src/components/office/OfficeLayout.jsx
@@ -161,12 +168,11 @@ TABLE PROFILES
 
   ORDERS
     Operations : insert, select, update
-    Readers    : 8 file(s)
+    Readers    : 7 file(s)
     Writers    : 3 file(s)
-    Filtered on: created_at, delivery_type, delta, id, is_read, is_walkin, order_id, reason, recipient_id, status, user_id, walkin_label
+    Filtered on: created_at, delivery_type, delta, id, is_walkin, order_id, reason, status, user_id, walkin_label
       read  ← src/hooks/useKitchenOrders.js
       read  ← src/hooks/useWalkinOrder.js
-      read  ← src/components/Header.jsx
       read  ← src/pages/Checkout.jsx
       read  ← src/pages/office/OfficeDashboard.jsx
       read  ← src/pages/office/OfficeOrders.jsx
@@ -177,7 +183,7 @@ TABLE PROFILES
       write → src/pages/Checkout.jsx
 
   PROFILES
-    Operations : insert, select, update
+    Operations : select, update, upsert
     Readers    : 4 file(s)
     Writers    : 4 file(s)
     Filtered on: entity_id, id
@@ -216,6 +222,8 @@ HOOKS  (data layer)
 ──────────────────────────────────────────────────────────────────────
   src/hooks/useCart.js
     tables: carts, cart_items  |  ops: select, insert, update, delete  [realtime]
+  src/hooks/useCategories.js
+    tables: entity_categories  |  ops: select, insert, update
   src/hooks/useIngredients.js
     tables: ingredients  |  ops: select  [realtime]
   src/hooks/useInventoryMovements.js
@@ -247,15 +255,17 @@ PAGES
 COMPONENTS
 ──────────────────────────────────────────────────────────────────────
   src/components/Header.jsx
-    tables: messages, orders  |  ops: select
+    tables: messages  |  ops: select
   src/components/office/IngredientPicker.jsx
     tables: ingredients  |  ops: select
   src/context/AuthProvider.jsx
-    tables: profiles  |  ops: select, insert
+    tables: profiles  |  ops: select, upsert
   src/pages/Checkout.jsx
     tables: carts, orders, order_items  |  ops: select, insert, update
   src/pages/Login.jsx
     tables: —  |  ops: —
+  src/pages/Menu.jsx
+    tables: items  |  ops: select
   src/pages/office/OfficeDashboard.jsx
     tables: orders, ingredients, inventory_movements, stock_reconciliations  |  ops: select
   src/pages/office/OfficeIngredients.jsx
@@ -263,7 +273,7 @@ COMPONENTS
   src/pages/office/OfficeLedger.jsx
     tables: ingredients, inventory_movements, ingredient_stock_cache  |  ops: select
   src/pages/office/OfficeMenuItems.jsx
-    tables: items, item_ingredients  |  ops: select, insert, update
+    tables: items  |  ops: select, insert, update
   src/pages/office/OfficeOrders.jsx
     tables: orders, inventory_movements, order_status_log  |  ops: select
   src/pages/office/OfficeRecipes.jsx
@@ -305,7 +315,7 @@ GAP ANALYSIS
     ℹ  ingredient_stock_cache
     ℹ  order_status_log
 
-  Direct writes bypassing hooks (19):
+  Direct writes bypassing hooks (18):
     ⚠  src/pages/Checkout.jsx  →  carts  [insert, update]
     ⚠  src/pages/office/OfficeIngredients.jsx  →  ingredients  [insert, update]
     ⚠  src/pages/office/OfficeReconciliation.jsx  →  ingredients  [insert, update]
@@ -323,7 +333,6 @@ GAP ANALYSIS
     ⚠  src/pages/office/OfficeStaff.jsx  →  profiles  [update]
     ⚠  src/pages/Profile.jsx  →  profiles  [update]
     ⚠  src/pages/Checkout.jsx  →  order_items  [insert, update]
-    ⚠  src/pages/office/OfficeMenuItems.jsx  →  item_ingredients  [insert, update]
     ⚠  src/pages/office/OfficeRecipes.jsx  →  item_ingredients  [insert, update]
 
 ──────────────────────────────────────────────────────────────────────

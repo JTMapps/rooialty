@@ -55,6 +55,18 @@
   },
   {
     "schema_name": "public",
+    "table_name": "entity_categories",
+    "index_name": "entity_categories_entity_id_name_key",
+    "index_definition": "CREATE UNIQUE INDEX entity_categories_entity_id_name_key ON public.entity_categories USING btree (entity_id, name)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "index_name": "entity_categories_pkey",
+    "index_definition": "CREATE UNIQUE INDEX entity_categories_pkey ON public.entity_categories USING btree (id)"
+  },
+  {
+    "schema_name": "public",
     "table_name": "entity_members",
     "index_name": "entity_members_entity_id_profile_id_key",
     "index_definition": "CREATE UNIQUE INDEX entity_members_entity_id_profile_id_key ON public.entity_members USING btree (entity_id, profile_id)"

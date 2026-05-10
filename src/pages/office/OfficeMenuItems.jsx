@@ -1,14 +1,14 @@
 // src/pages/office/OfficeMenuItems.jsx
 //
-// Full refactor. Changes from original:
-//   • Category dropdown is driven by useCategories (reads entity_categories table)
-//     instead of a hardcoded CATEGORIES array.
-//   • InlineAddCategory sub-component lets office add new categories without leaving
-//     the item form. Press Enter or click "Add" — it saves to entity_categories and
-//     immediately selects the new value.
-//   • Category Manager modal (accessible via "Manage Categories" button) allows
-//     reordering and bulk additions outside of item editing.
-//   • items.category is now plain text matching entity_categories.name.
+// Office role manages menu items and categories.
+// - Empty state guides office to create categories first, then items.
+// - Category dropdown is driven by entity_categories table.
+// - InlineAddCategory lets office add categories without leaving the form.
+// - Category Manager modal handles reordering.
+// - items.category is plain text matching entity_categories.name.
+// - Real-time subscription keeps table in sync across office sessions.
+//
+// STYLING: uses office.js, components.js, table.js — no style mutations.
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
@@ -18,19 +18,19 @@ import { btn } from "../../styles/components";
 import { office } from "../../styles/office";
 import { table } from "../../styles/table";
 
-// ─── constants ────────────────────────────────────────────────────────────────
-const ITEM_TYPES = ["food", "drink", "other"];
+// ─── Constants ────────────────────────────────────────────────────────────────
+const ITEM_TYPES = ["food", "drink"];
 
 const EMPTY_FORM = {
-  name: "",
-  category: "",
-  item_type: "food",
-  price: "",
+  name:        "",
+  category:    "",
+  item_type:   "food",
+  price:       "",
   description: "",
-  in_stock: true,
+  in_stock:    true,
 };
 
-// ─── main component ───────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function OfficeMenuItems() {
   const { entityId } = useAuth();
   const { categories, addCategory, reorder, loading: catsLoading } = useCategories();
@@ -52,6 +52,7 @@ export default function OfficeMenuItems() {
     const { data, error } = await supabase
       .from("items")
       .select("id, name, category, item_type, price, description, in_stock, created_at")
+      .is("deleted_at", null)
       .order("category", { ascending: true })
       .order("name",     { ascending: true });
 
@@ -61,7 +62,7 @@ export default function OfficeMenuItems() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  // Real-time sync so changes from other office sessions appear immediately
+  // Real-time sync
   useEffect(() => {
     if (!entityId) return;
     const channel = supabase
@@ -74,10 +75,7 @@ export default function OfficeMenuItems() {
   // ── Form helpers ─────────────────────────────────────────────────────────────
   const openNew = () => {
     setEditingId(null);
-    setForm({
-      ...EMPTY_FORM,
-      category: categories[0]?.name ?? "",
-    });
+    setForm({ ...EMPTY_FORM, category: categories[0]?.name ?? "" });
     setFormError("");
     setShowForm(true);
   };
@@ -105,7 +103,7 @@ export default function OfficeMenuItems() {
 
   const handleSave = async () => {
     if (!form.name.trim())     return setFormError("Name is required.");
-    if (!form.category.trim()) return setFormError("Category is required.");
+    if (!form.category.trim()) return setFormError("Category is required — create one first.");
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0)
       return setFormError("Enter a valid price.");
 
@@ -164,9 +162,9 @@ export default function OfficeMenuItems() {
   return (
     <div style={office.page}>
 
-      {/* ── Header row ── */}
+      {/* ── Header ── */}
       <div style={s.headerRow}>
-        <h2 style={office.heading}>Menu Items</h2>
+        <h2 style={s.heading}>Menu Items</h2>
         <div style={s.headerActions}>
           <button style={btn.secondary} onClick={() => setShowCatManager(true)}>
             Manage Categories
@@ -193,8 +191,8 @@ export default function OfficeMenuItems() {
         </div>
       )}
 
-      {/* ── Items table ── */}
-      {loadingItems ? (
+      {/* ── Items table / empty state ── */}
+      {loadingItems || catsLoading ? (
         <p style={s.muted}>Loading…</p>
       ) : displayed.length === 0 ? (
         <EmptyState
@@ -203,39 +201,41 @@ export default function OfficeMenuItems() {
           onManageCats={() => setShowCatManager(true)}
         />
       ) : (
-        <table style={table.table}>
-          <thead>
-            <tr>
-              {["Name", "Category", "Type", "Price (ZAR)", "In Stock", ""].map((h) => (
-                <th key={h} style={table.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {displayed.map((item) => (
-              <tr key={item.id} style={table.tr}>
-                <td style={table.td}>{item.name}</td>
-                <td style={table.td}>
-                  <span style={s.catPill}>{item.category}</span>
-                </td>
-                <td style={table.td}>{item.item_type}</td>
-                <td style={table.td}>R {Number(item.price).toFixed(2)}</td>
-                <td style={table.td}>
-                  <button
-                    style={item.in_stock ? s.stockOn : s.stockOff}
-                    onClick={() => toggleStock(item)}
-                  >
-                    {item.in_stock ? "In stock" : "Out"}
-                  </button>
-                </td>
-                <td style={{ ...table.td, whiteSpace: "nowrap" }}>
-                  <button style={s.editBtn} onClick={() => openEdit(item)}>Edit</button>
-                  <button style={s.deleteBtn} onClick={() => softDelete(item.id)}>Archive</button>
-                </td>
+        <div style={table.wrapper}>
+          <table style={table.table}>
+            <thead>
+              <tr>
+                {["Name", "Category", "Type", "Price (ZAR)", "In Stock", ""].map((h) => (
+                  <th key={h} style={table.th}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {displayed.map((item) => (
+                <tr key={item.id}>
+                  <td style={table.td}>{item.name}</td>
+                  <td style={table.td}>
+                    <span style={s.catPill}>{item.category}</span>
+                  </td>
+                  <td style={table.td}>{item.item_type}</td>
+                  <td style={table.td}>R {Number(item.price).toFixed(2)}</td>
+                  <td style={table.td}>
+                    <button
+                      style={item.in_stock ? s.stockOn : s.stockOff}
+                      onClick={() => toggleStock(item)}
+                    >
+                      {item.in_stock ? "In stock" : "Out"}
+                    </button>
+                  </td>
+                  <td style={{ ...table.td, whiteSpace: "nowrap" }}>
+                    <button style={s.editBtn}   onClick={() => openEdit(item)}>Edit</button>
+                    <button style={s.deleteBtn} onClick={() => softDelete(item.id)}>Archive</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Item form modal ── */}
@@ -252,18 +252,24 @@ export default function OfficeMenuItems() {
             </Field>
 
             <Field label="Category">
-              <select
-                style={s.input}
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              >
-                {categories.length === 0 && (
-                  <option value="">— Add a category first —</option>
-                )}
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+              {categories.length === 0 ? (
+                <p style={s.noCatHint}>
+                  No categories yet — create one below first.
+                </p>
+              ) : (
+                <select
+                  style={s.input}
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
+                  {form.category === "" && (
+                    <option value="">— Select a category —</option>
+                  )}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              )}
               <InlineAddCategory
                 onAdd={async (name) => {
                   const { data, error } = await addCategory(name);
@@ -323,8 +329,8 @@ export default function OfficeMenuItems() {
           {formError && <p style={s.error}>{formError}</p>}
 
           <div style={s.modalActions}>
-            <button style={btn.ghost} onClick={closeForm}>Cancel</button>
-            <button style={btn.primary} onClick={handleSave} disabled={saving}>
+            <button style={btn.ghost}    onClick={closeForm}>Cancel</button>
+            <button style={btn.primary}  onClick={handleSave} disabled={saving}>
               {saving ? "Saving…" : editingId ? "Save Changes" : "Add Item"}
             </button>
           </div>
@@ -347,10 +353,10 @@ export default function OfficeMenuItems() {
 
 // ─── InlineAddCategory ────────────────────────────────────────────────────────
 function InlineAddCategory({ onAdd }) {
-  const [open,    setOpen]    = useState(false);
-  const [value,   setValue]   = useState("");
-  const [saving,  setSaving]  = useState(false);
-  const [errMsg,  setErrMsg]  = useState("");
+  const [open,   setOpen]   = useState(false);
+  const [value,  setValue]  = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
 
   const handleAdd = async () => {
     if (!value.trim()) return;
@@ -383,7 +389,7 @@ function InlineAddCategory({ onAdd }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") handleAdd();
+          if (e.key === "Enter")  handleAdd();
           if (e.key === "Escape") { setOpen(false); setValue(""); }
         }}
       />
@@ -417,7 +423,7 @@ function CategoryManagerModal({ categories, onAdd, onReorder, onClose, loading }
   return (
     <Modal onClose={onClose} title="Manage Categories">
       <p style={s.muted}>
-        Categories control how menu items are grouped. Office role only.
+        Categories group items on the menu. Add them here before creating menu items.
       </p>
 
       {loading ? (
@@ -472,22 +478,23 @@ function CategoryManagerModal({ categories, onAdd, onReorder, onClose, loading }
 
 // ─── EmptyState ───────────────────────────────────────────────────────────────
 function EmptyState({ hasCats, onAddItem, onManageCats }) {
+  if (!hasCats) {
+    return (
+      <div style={s.emptyState}>
+        <p style={s.emptyTitle}>No categories yet.</p>
+        <p style={s.muted}>
+          Categories must be created first — they define how the menu is organised.
+        </p>
+        <button style={btn.primary} onClick={onManageCats}>
+          Create Categories
+        </button>
+      </div>
+    );
+  }
   return (
     <div style={s.emptyState}>
-      {hasCats ? (
-        <>
-          <p style={s.emptyTitle}>No items in this category yet.</p>
-          <button style={btn.primary} onClick={onAddItem}>+ Add Item</button>
-        </>
-      ) : (
-        <>
-          <p style={s.emptyTitle}>No categories defined yet.</p>
-          <p style={s.muted}>Create at least one category before adding menu items.</p>
-          <button style={btn.primary} onClick={onManageCats}>
-            Create Categories
-          </button>
-        </>
-      )}
+      <p style={s.emptyTitle}>No items in this category yet.</p>
+      <button style={btn.primary} onClick={onAddItem}>+ Add Item</button>
     </div>
   );
 }
@@ -532,250 +539,271 @@ function Tab({ label, active, onClick, count }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = {
+  heading: {
+    fontFamily:    "var(--font-display)",
+    fontSize:      "clamp(28px, 4vw, 44px)",
+    letterSpacing: "0.04em",
+    color:         "var(--bone)",
+    margin:        0,
+    lineHeight:    1,
+  },
   headerRow: {
-    display: "flex",
-    alignItems: "center",
+    display:        "flex",
+    alignItems:     "center",
     justifyContent: "space-between",
-    marginBottom: "20px",
+    padding:        "28px 24px 20px",
+    borderBottom:   "1px solid var(--pit)",
+    flexWrap:       "wrap",
+    gap:            16,
   },
   headerActions: {
     display: "flex",
-    gap: "10px",
+    gap:     "10px",
   },
   tabs: {
-    display: "flex",
-    gap: "4px",
-    marginBottom: "16px",
-    flexWrap: "wrap",
+    display:    "flex",
+    gap:        "4px",
+    padding:    "12px 24px",
+    flexWrap:   "wrap",
   },
   tab: {
-    background: "none",
-    border: "1px solid var(--border, #2a2a2a)",
-    color: "var(--muted, #888)",
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    padding: "6px 12px",
-    borderRadius: "4px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
+    background:  "none",
+    border:      "1px solid var(--pit)",
+    color:       "var(--muted)",
+    fontFamily:  "var(--font-body)",
+    fontSize:    "13px",
+    padding:     "6px 12px",
+    borderRadius:"4px",
+    cursor:      "pointer",
+    display:     "flex",
+    alignItems:  "center",
+    gap:         "6px",
   },
   tabActive: {
-    color: "var(--text, #fff)",
-    borderColor: "var(--fire, #e63)",
-    background: "color-mix(in srgb, var(--fire, #e63) 10%, transparent)",
+    color:       "var(--bone)",
+    borderColor: "var(--fire)",
+    background:  "rgba(249,115,22,0.1)",
   },
   tabCount: {
-    fontSize: "11px",
-    background: "var(--surface-hover, #222)",
-    padding: "1px 5px",
-    borderRadius: "8px",
+    fontSize:   "11px",
+    background: "var(--pit)",
+    padding:    "1px 5px",
+    borderRadius:"8px",
   },
   muted: {
-    color: "var(--muted, #888)",
+    color:      "var(--muted)",
     fontFamily: "var(--font-body)",
-    fontSize: "13px",
+    fontSize:   "13px",
+    padding:    "0 24px",
   },
   catPill: {
-    display: "inline-block",
-    padding: "2px 8px",
+    display:      "inline-block",
+    padding:      "2px 8px",
     borderRadius: "4px",
-    background: "var(--surface-hover, #222)",
-    fontSize: "12px",
-    color: "var(--muted, #888)",
+    background:   "var(--pit)",
+    fontSize:     "12px",
+    color:        "var(--muted)",
   },
   stockOn: {
-    background: "none",
-    border: "1px solid #4a9",
-    color: "#4a9",
+    background:   "none",
+    border:       "1px solid #4a9",
+    color:        "#4a9",
     borderRadius: "4px",
-    padding: "3px 8px",
-    fontSize: "12px",
-    cursor: "pointer",
+    padding:      "3px 8px",
+    fontSize:     "12px",
+    cursor:       "pointer",
   },
   stockOff: {
-    background: "none",
-    border: "1px solid #888",
-    color: "#888",
+    background:   "none",
+    border:       "1px solid #888",
+    color:        "#888",
     borderRadius: "4px",
-    padding: "3px 8px",
-    fontSize: "12px",
-    cursor: "pointer",
+    padding:      "3px 8px",
+    fontSize:     "12px",
+    cursor:       "pointer",
   },
   editBtn: {
-    background: "none",
-    border: "none",
-    color: "var(--fire, #e63)",
-    fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    cursor: "pointer",
+    background:  "none",
+    border:      "none",
+    color:       "var(--fire)",
+    fontFamily:  "var(--font-body)",
+    fontSize:    "13px",
+    cursor:      "pointer",
     marginRight: "8px",
   },
   deleteBtn: {
     background: "none",
-    border: "none",
-    color: "var(--muted, #888)",
+    border:     "none",
+    color:      "var(--muted)",
     fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    cursor: "pointer",
+    fontSize:   "13px",
+    cursor:     "pointer",
   },
   overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.7)",
-    display: "flex",
-    alignItems: "center",
+    position:       "fixed",
+    inset:          0,
+    background:     "rgba(0,0,0,0.7)",
+    display:        "flex",
+    alignItems:     "center",
     justifyContent: "center",
-    zIndex: 200,
-    padding: "24px",
+    zIndex:         200,
+    padding:        "24px",
   },
   modal: {
-    background: "var(--surface, #111)",
-    border: "1px solid var(--border, #2a2a2a)",
-    borderRadius: "8px",
-    padding: "24px",
-    width: "100%",
-    maxWidth: "560px",
-    maxHeight: "90vh",
-    overflowY: "auto",
+    background:  "var(--ash)",
+    border:      "1px solid var(--pit)",
+    borderRadius:"8px",
+    padding:     "24px",
+    width:       "100%",
+    maxWidth:    "560px",
+    maxHeight:   "90vh",
+    overflowY:   "auto",
   },
   modalHeader: {
-    display: "flex",
+    display:        "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px",
+    alignItems:     "center",
+    marginBottom:   "20px",
   },
   modalTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: "20px",
-    margin: 0,
-    color: "var(--text, #fff)",
+    fontFamily:    "var(--font-display)",
+    fontSize:      "20px",
+    margin:        0,
+    color:         "var(--bone)",
+    letterSpacing: "0.04em",
   },
   closeBtn: {
     background: "none",
-    border: "none",
-    color: "var(--muted, #888)",
-    fontSize: "18px",
-    cursor: "pointer",
+    border:     "none",
+    color:      "var(--muted)",
+    fontSize:   "18px",
+    cursor:     "pointer",
   },
   formGrid: {
-    display: "grid",
+    display:             "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-    marginBottom: "16px",
+    gap:                 "16px",
+    marginBottom:        "16px",
   },
   label: {
-    display: "block",
-    fontFamily: "var(--font-body)",
-    fontSize: "11px",
+    display:       "block",
+    fontFamily:    "var(--font-body)",
+    fontSize:      "11px",
     letterSpacing: "0.12em",
     textTransform: "uppercase",
-    color: "var(--muted, #888)",
-    marginBottom: "6px",
+    color:         "var(--muted)",
+    marginBottom:  "6px",
   },
   input: {
-    width: "100%",
-    background: "var(--surface-hover, #1a1a1a)",
-    border: "1px solid var(--border, #2a2a2a)",
+    width:        "100%",
+    background:   "#161616",
+    border:       "1px solid var(--pit)",
     borderRadius: "4px",
-    color: "var(--text, #fff)",
-    fontFamily: "var(--font-body)",
-    fontSize: "14px",
-    padding: "8px 10px",
-    boxSizing: "border-box",
-    outline: "none",
+    color:        "var(--bone)",
+    fontFamily:   "var(--font-sans)",
+    fontSize:     "14px",
+    padding:      "8px 10px",
+    boxSizing:    "border-box",
+    outline:      "none",
   },
   toggle: {
-    display: "flex",
+    display:    "flex",
     alignItems: "center",
     fontFamily: "var(--font-body)",
-    fontSize: "14px",
-    color: "var(--text, #fff)",
-    cursor: "pointer",
+    fontSize:   "14px",
+    color:      "var(--bone)",
+    cursor:     "pointer",
   },
   modalActions: {
-    display: "flex",
+    display:        "flex",
     justifyContent: "flex-end",
-    gap: "10px",
-    marginTop: "24px",
+    gap:            "10px",
+    marginTop:      "24px",
   },
   error: {
-    color: "var(--fire, #e63)",
+    color:      "var(--ember)",
     fontFamily: "var(--font-body)",
-    fontSize: "13px",
-    marginTop: "8px",
+    fontSize:   "13px",
+    marginTop:  "8px",
+  },
+  noCatHint: {
+    fontFamily: "var(--font-body)",
+    fontSize:   "13px",
+    color:      "var(--gold)",
+    margin:     "0 0 6px",
   },
   emptyState: {
-    display: "flex",
+    display:       "flex",
     flexDirection: "column",
-    alignItems: "center",
-    gap: "12px",
-    padding: "60px 0",
-    textAlign: "center",
+    alignItems:    "center",
+    gap:           "12px",
+    padding:       "60px 24px",
+    textAlign:     "center",
   },
   emptyTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: "24px",
-    color: "var(--text, #fff)",
-    margin: 0,
+    fontFamily:    "var(--font-display)",
+    fontSize:      "28px",
+    color:         "var(--bone)",
+    margin:        0,
+    letterSpacing: "0.04em",
   },
   inlineAddBtn: {
-    display: "block",
+    display:    "block",
     background: "none",
-    border: "none",
-    color: "var(--fire, #e63)",
+    border:     "none",
+    color:      "var(--fire)",
     fontFamily: "var(--font-body)",
-    fontSize: "12px",
-    cursor: "pointer",
-    padding: "4px 0",
-    marginTop: "4px",
+    fontSize:   "12px",
+    cursor:     "pointer",
+    padding:    "4px 0",
+    marginTop:  "4px",
   },
   inlineAddRow: {
-    display: "flex",
-    gap: "6px",
+    display:    "flex",
+    gap:        "6px",
     alignItems: "center",
-    marginTop: "6px",
-    flexWrap: "wrap",
+    marginTop:  "6px",
+    flexWrap:   "wrap",
   },
   catList: {
-    listStyle: "none",
-    padding: 0,
-    margin: "16px 0",
-    borderTop: "1px solid var(--border, #2a2a2a)",
+    listStyle:  "none",
+    padding:    0,
+    margin:     "16px 0",
+    borderTop:  "1px solid var(--pit)",
   },
   catRow: {
-    display: "flex",
+    display:        "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 0",
-    borderBottom: "1px solid var(--border, #2a2a2a)",
+    alignItems:     "center",
+    padding:        "10px 0",
+    borderBottom:   "1px solid var(--pit)",
   },
   catName: {
     fontFamily: "var(--font-body)",
-    fontSize: "14px",
-    color: "var(--text, #fff)",
+    fontSize:   "14px",
+    color:      "var(--bone)",
   },
   catActions: {
     display: "flex",
-    gap: "6px",
+    gap:     "6px",
   },
   reorderBtn: {
-    background: "var(--surface-hover, #222)",
-    border: "1px solid var(--border, #2a2a2a)",
+    background:   "var(--pit)",
+    border:       "1px solid var(--coal)",
     borderRadius: "4px",
-    color: "var(--muted, #888)",
-    width: "28px",
-    height: "28px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    color:        "var(--muted)",
+    width:        "28px",
+    height:       "28px",
+    cursor:       "pointer",
+    display:      "flex",
+    alignItems:   "center",
+    justifyContent:"center",
+    fontSize:     "14px",
   },
   addCatRow: {
-    display: "flex",
-    gap: "8px",
+    display:    "flex",
+    gap:        "8px",
     alignItems: "center",
-    marginTop: "16px",
+    marginTop:  "16px",
   },
 };

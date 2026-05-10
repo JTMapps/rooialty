@@ -289,6 +289,51 @@
   },
   {
     "schema_name": "public",
+    "table_name": "entity_categories",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "nullability": "NOT NULL",
+    "column_default": "now()",
+    "column_definition": "timestamp with time zone NOT NULL DEFAULT now()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "column_name": "entity_id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "uuid NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "column_name": "id",
+    "data_type": "uuid",
+    "nullability": "NOT NULL",
+    "column_default": "gen_random_uuid()",
+    "column_definition": "uuid NOT NULL DEFAULT gen_random_uuid()"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "column_name": "name",
+    "data_type": "text",
+    "nullability": "NOT NULL",
+    "column_default": null,
+    "column_definition": "text NOT NULL"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "entity_categories",
+    "column_name": "sort_order",
+    "data_type": "integer",
+    "nullability": "NOT NULL",
+    "column_default": "0",
+    "column_definition": "integer NOT NULL DEFAULT 0"
+  },
+  {
+    "schema_name": "public",
     "table_name": "entity_members",
     "column_name": "entity_id",
     "data_type": "uuid",

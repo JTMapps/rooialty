@@ -1,9 +1,8 @@
 // src/hooks/useCategories.js
 //
-// Manages the entity_categories table for the current entity.
-// All writes are gated by RLS to role = 'office' — the hook doesn't need to
-// enforce that itself, but callers in the UI should hide write controls from
-// non-office users.
+// Fetches entity_categories for the current entity.
+// Exposes addCategory, reorder (up/down), and renameCategory.
+// All writes are RLS-gated to role = 'office' on the server side.
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -15,7 +14,7 @@ export default function useCategories() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchCategories = useCallback(async () => {
     if (!entityId) return;
     setLoading(true);
@@ -38,12 +37,11 @@ export default function useCategories() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // ── Add a new category ────────────────────────────────────────────────────────
+  // ── Add ────────────────────────────────────────────────────────────────────
   const addCategory = async (name) => {
     const trimmed = name.trim();
     if (!trimmed || !entityId) return { data: null, error: "Invalid input" };
 
-    // Deduplicate client-side for instant feedback
     if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
       return { data: null, error: "Category already exists" };
     }
@@ -63,7 +61,7 @@ export default function useCategories() {
     return { data, error: insertError?.message ?? null };
   };
 
-  // ── Reorder two adjacent categories ──────────────────────────────────────────
+  // ── Reorder ────────────────────────────────────────────────────────────────
   const reorder = async (id, direction) => {
     const idx = categories.findIndex((c) => c.id === id);
     if (idx === -1) return;
@@ -73,21 +71,20 @@ export default function useCategories() {
     const a = categories[idx];
     const b = categories[swapIdx];
 
-    // Optimistic update
+    // Optimistic
     const next = [...categories];
     next[idx]     = { ...a, sort_order: b.sort_order };
     next[swapIdx] = { ...b, sort_order: a.sort_order };
     next.sort((x, y) => x.sort_order - y.sort_order);
     setCategories(next);
 
-    // Persist both rows
     await Promise.all([
       supabase.from("entity_categories").update({ sort_order: b.sort_order }).eq("id", a.id),
       supabase.from("entity_categories").update({ sort_order: a.sort_order }).eq("id", b.id),
     ]);
   };
 
-  // ── Rename a category ─────────────────────────────────────────────────────────
+  // ── Rename ─────────────────────────────────────────────────────────────────
   const renameCategory = async (id, newName) => {
     const trimmed = newName.trim();
     if (!trimmed) return { error: "Name cannot be empty" };
