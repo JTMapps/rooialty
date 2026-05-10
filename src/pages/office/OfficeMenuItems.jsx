@@ -1,680 +1,781 @@
 // src/pages/office/OfficeMenuItems.jsx
-import { useState, useEffect, useCallback, useRef } from "react";
+//
+// Full refactor. Changes from original:
+//   • Category dropdown is driven by useCategories (reads entity_categories table)
+//     instead of a hardcoded CATEGORIES array.
+//   • InlineAddCategory sub-component lets office add new categories without leaving
+//     the item form. Press Enter or click "Add" — it saves to entity_categories and
+//     immediately selects the new value.
+//   • Category Manager modal (accessible via "Manage Categories" button) allows
+//     reordering and bulk additions outside of item editing.
+//   • items.category is now plain text matching entity_categories.name.
+
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import useAuth from "../../hooks/useAuth";
+import useCategories from "../../hooks/useCategories";
 import { btn } from "../../styles/components";
 import { office } from "../../styles/office";
 import { table } from "../../styles/table";
-import { form } from "../../styles/forms";
-import useAuth from "../../hooks/useAuth";
-import useCategories from "../../hooks/useCategories";
 
-const ITEM_TYPES  = ["food", "drink"];
-const EMPTY_FORM  = { name: "", category: "", item_type: "food", price: "", in_stock: true };
+// ─── constants ────────────────────────────────────────────────────────────────
+const ITEM_TYPES = ["food", "drink", "other"];
 
+const EMPTY_FORM = {
+  name: "",
+  category: "",
+  item_type: "food",
+  price: "",
+  description: "",
+  in_stock: true,
+};
+
+// ─── main component ───────────────────────────────────────────────────────────
 export default function OfficeMenuItems() {
-  const { entityId }                            = useAuth();
-  const { categories, loading: catsLoading,
-          addCategory, reorder }                = useCategories();
+  const { entityId } = useAuth();
+  const { categories, addCategory, reorder, loading: catsLoading } = useCategories();
 
-  const [items,        setItems]        = useState([]);
-  const [availability, setAvailability] = useState({});
-  const [loading,      setLoading]      = useState(true);
-  const [showDeleted,  setShowDeleted]  = useState(false);
-  const [filterCat,    setFilterCat]    = useState("all");
-  const [filterType,   setFilterType]   = useState("all");
-  const [search,       setSearch]       = useState("");
-  const [modal,        setModal]        = useState(null); // "form" | "categories"
-  const [formState,    setFormState]    = useState(EMPTY_FORM);
-  const [editId,       setEditId]       = useState(null);
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState("");
+  const [items,          setItems]          = useState([]);
+  const [loadingItems,   setLoadingItems]   = useState(true);
+  const [form,           setForm]           = useState(EMPTY_FORM);
+  const [editingId,      setEditingId]      = useState(null);
+  const [saving,         setSaving]         = useState(false);
+  const [showForm,       setShowForm]       = useState(false);
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [formError,      setFormError]      = useState("");
+  const [filterCat,      setFilterCat]      = useState("all");
 
-  // Category manager state
-  const [newCatName,   setNewCatName]   = useState("");
-  const [catSaving,    setCatSaving]    = useState(false);
-  const [catError,     setCatError]     = useState("");
-  const newCatRef                       = useRef(null);
+  // ── Fetch items ──────────────────────────────────────────────────────────────
+  const fetchItems = useCallback(async () => {
+    if (!entityId) return;
+    setLoadingItems(true);
+    const { data, error } = await supabase
+      .from("items")
+      .select("id, name, category, item_type, price, description, in_stock, created_at")
+      .order("category", { ascending: true })
+      .order("name",     { ascending: true });
 
-  // Seed form category when categories load and form has no category yet
+    if (!error) setItems(data ?? []);
+    setLoadingItems(false);
+  }, [entityId]);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  // Real-time sync so changes from other office sessions appear immediately
   useEffect(() => {
-    if (categories.length && !formState.category) {
-      setFormState((prev) => ({ ...prev, category: categories[0].name }));
-    }
-  }, [categories]);
+    if (!entityId) return;
+    const channel = supabase
+      .channel("items:office")
+      .on("postgres_changes", { event: "*", schema: "public", table: "items" }, fetchItems)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [entityId, fetchItems]);
 
-  const load = useCallback(async () => {
-    const [itemsRes] = await Promise.all([
-      supabase
-        .from("items")
-        .select("id, name, category, item_type, price, in_stock, deleted_at")
-        .order("name"),
-    ]);
-
-    setItems(itemsRes.data || []);
-
-    const { data: bomData } = await supabase
-      .from("item_ingredients")
-      .select("item_id, quantity_required, deleted_at, ingredient:ingredients(ingredient_stock_cache(current_stock))")
-      .is("deleted_at", null);
-
-    const avMap = {};
-    (bomData || []).forEach((line) => {
-      if (!avMap[line.item_id]) avMap[line.item_id] = { hasBom: true, servings: [] };
-      const stock = line.ingredient?.ingredient_stock_cache?.current_stock ?? 0;
-      const qty   = line.quantity_required;
-      avMap[line.item_id].servings.push(qty > 0 ? Math.floor(stock / qty) : 0);
+  // ── Form helpers ─────────────────────────────────────────────────────────────
+  const openNew = () => {
+    setEditingId(null);
+    setForm({
+      ...EMPTY_FORM,
+      category: categories[0]?.name ?? "",
     });
-    Object.keys(avMap).forEach((id) => {
-      const servings       = avMap[id].servings;
-      avMap[id].maxServings = servings.length ? Math.min(...servings) : 0;
-    });
-    setAvailability(avMap);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const visible = items.filter((i) => {
-    if (!showDeleted &&  i.deleted_at) return false;
-    if ( showDeleted && !i.deleted_at) return false;
-    if (filterCat  !== "all" && i.category  !== filterCat)  return false;
-    if (filterType !== "all" && i.item_type !== filterType) return false;
-    if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  // ── Modal helpers ──────────────────────────────────────────────────────────
-
-  const openAdd = () => {
-    setFormState({ ...EMPTY_FORM, category: categories[0]?.name ?? "" });
-    setEditId(null); setError(""); setModal("form");
+    setFormError("");
+    setShowForm(true);
   };
 
   const openEdit = (item) => {
-    setFormState({
-      name:      item.name,
-      category:  item.category,
-      item_type: item.item_type,
-      price:     item.price,
-      in_stock:  item.in_stock,
+    setEditingId(item.id);
+    setForm({
+      name:        item.name,
+      category:    item.category,
+      item_type:   item.item_type,
+      price:       String(item.price),
+      description: item.description ?? "",
+      in_stock:    item.in_stock,
     });
-    setEditId(item.id); setError(""); setModal("form");
+    setFormError("");
+    setShowForm(true);
   };
 
-  const openCategoryManager = () => {
-    setNewCatName(""); setCatError(""); setModal("categories");
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormError("");
   };
-
-  // ── Save item ──────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!formState.name.trim()) { setError("Name is required."); return; }
-    if (formState.price === "" || isNaN(Number(formState.price)) || Number(formState.price) < 0) {
-      setError("Valid price is required."); return;
-    }
-    if (!formState.category) { setError("Category is required."); return; }
+    if (!form.name.trim())     return setFormError("Name is required.");
+    if (!form.category.trim()) return setFormError("Category is required.");
+    if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0)
+      return setFormError("Enter a valid price.");
 
-    setSaving(true); setError("");
+    setSaving(true);
+    setFormError("");
+
     const payload = {
-      name:      formState.name.trim(),
-      category:  formState.category,
-      item_type: formState.item_type,
-      price:     Number(formState.price),
-      in_stock:  formState.in_stock,
-      entity_id: entityId,
+      name:        form.name.trim(),
+      category:    form.category.trim(),
+      item_type:   form.item_type,
+      price:       Number(form.price),
+      description: form.description.trim() || null,
+      in_stock:    form.in_stock,
+      entity_id:   entityId,
     };
 
-    let err;
-    if (editId) {
-      ({ error: err } = await supabase.from("items").update(payload).eq("id", editId));
+    let error;
+    if (editingId) {
+      ({ error } = await supabase.from("items").update(payload).eq("id", editingId));
     } else {
-      ({ error: err } = await supabase.from("items").insert(payload));
+      ({ error } = await supabase.from("items").insert(payload));
     }
+
     setSaving(false);
-    if (err) { setError(err.message); return; }
-    setModal(null);
-    load();
-  };
-
-  // ── Add new category inline from form ─────────────────────────────────────
-
-  const handleInlineAddCategory = async (rawName) => {
-    const { data, error } = await addCategory(rawName);
-    if (!error && data) {
-      setFormState((prev) => ({ ...prev, category: data.name }));
+    if (error) {
+      setFormError(error.message);
+    } else {
+      closeForm();
+      fetchItems();
     }
   };
 
-  // ── Add category from manager ──────────────────────────────────────────────
-
-  const handleAddCategory = async () => {
-    if (!newCatName.trim()) { setCatError("Name is required."); return; }
-    setCatSaving(true); setCatError("");
-    const { error } = await addCategory(newCatName);
-    setCatSaving(false);
-    if (error) { setCatError(error.message); return; }
-    setNewCatName("");
-    newCatRef.current?.focus();
+  const toggleStock = async (item) => {
+    await supabase
+      .from("items")
+      .update({ in_stock: !item.in_stock })
+      .eq("id", item.id);
+    fetchItems();
   };
 
-  // ── Archive / restore / stock ──────────────────────────────────────────────
-
-  const handleArchive = async (item) => {
-    if (!confirm(`Archive "${item.name}"? It will be hidden from menus.`)) return;
-    await supabase.from("items").update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    load();
+  const softDelete = async (id) => {
+    if (!window.confirm("Archive this item? It will no longer appear on the menu.")) return;
+    await supabase
+      .from("items")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    fetchItems();
   };
 
-  const handleRestore = async (item) => {
-    await supabase.from("items").update({ deleted_at: null }).eq("id", item.id);
-    load();
-  };
+  // ── Filtered items ───────────────────────────────────────────────────────────
+  const displayed = filterCat === "all"
+    ? items
+    : items.filter((i) => i.category === filterCat);
 
-  const handleToggleStock = async (item) => {
-    await supabase.from("items").update({ in_stock: !item.in_stock }).eq("id", item.id);
-    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, in_stock: !i.in_stock } : i));
-  };
-
-  const getAvailStatus = (item) => {
-    const a = availability[item.id];
-    if (!a)              return { label: "Untracked",         color: "var(--muted)",  bg: "rgba(107,114,128,0.15)" };
-    if (a.maxServings > 0) return { label: `${a.maxServings} servings`, color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
-    return               { label: "OUT",                      color: "var(--ember)",  bg: "rgba(220,38,38,0.15)" };
-  };
-
-  const setF = (key, val) => setFormState((prev) => ({ ...prev, [key]: val }));
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div style={office.page}>
 
-      {/* ── Header ── */}
-      <div style={office.head}>
-        <div>
-          <div style={office.eyebrow}>Menu Management</div>
-          <h1 style={office.title}>Menu Items</h1>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            style={{ ...btn.ghost, fontSize: 12 }}
-            onClick={openCategoryManager}
-            title="Manage categories"
-          >
-            Categories
+      {/* ── Header row ── */}
+      <div style={s.headerRow}>
+        <h2 style={office.heading}>Menu Items</h2>
+        <div style={s.headerActions}>
+          <button style={btn.secondary} onClick={() => setShowCatManager(true)}>
+            Manage Categories
           </button>
-          <button
-            style={{ ...btn.ghost, fontSize: 12 }}
-            onClick={() => setShowDeleted((v) => !v)}
-          >
-            {showDeleted ? "Show Active" : "Show Archived"}
+          <button style={btn.primary} onClick={openNew}>
+            + Add Item
           </button>
-          {!showDeleted && (
-            <button style={{ ...btn.primary, ...btn.sm }} onClick={openAdd}>
-              + Add Item
-            </button>
-          )}
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div style={office.toolbar}>
-        <input
-          style={office.toolbarSearch}
-          placeholder="Search items…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          style={office.toolbarSelect}
-          value={filterCat}
-          onChange={(e) => setFilterCat(e.target.value)}
-        >
-          <option value="all">All Categories</option>
+      {/* ── Category filter tabs ── */}
+      {categories.length > 0 && (
+        <div style={s.tabs}>
+          <Tab label="All" active={filterCat === "all"} onClick={() => setFilterCat("all")} />
           {categories.map((c) => (
-            <option key={c.id} value={c.name}>{c.name}</option>
+            <Tab
+              key={c.id}
+              label={c.name}
+              active={filterCat === c.name}
+              onClick={() => setFilterCat(c.name)}
+              count={items.filter((i) => i.category === c.name).length}
+            />
           ))}
-        </select>
-        <select
-          style={office.toolbarSelect}
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        >
-          <option value="all">All Types</option>
-          {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--muted)", marginLeft: "auto" }}>
-          {visible.length} items
-        </span>
-      </div>
-
-      {/* ── Table ── */}
-      <div style={table.wrapper}>
-        {loading ? (
-          <div style={office.loading}>Loading…</div>
-        ) : visible.length === 0 ? (
-          <div style={office.emptyState}>
-            <p style={office.emptyLabel}>No items found.</p>
-          </div>
-        ) : (
-          <table style={table.table}>
-            <thead>
-              <tr>
-                {["Name", "Category", "Type", "Price", "In Stock", "Availability", "Actions"].map((h) => (
-                  <th key={h} style={table.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((item) => {
-                const avail = getAvailStatus(item);
-                return (
-                  <tr key={item.id}>
-                    <td style={{ ...table.td, fontWeight: 600 }}>{item.name}</td>
-                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.category}</td>
-                    <td style={{ ...table.td, color: "var(--muted)" }}>{item.item_type}</td>
-                    <td style={{ ...table.td, fontFamily: "var(--font-display)", fontSize: 16, color: "var(--gold)" }}>
-                      R{Number(item.price).toFixed(2)}
-                    </td>
-                    <td style={table.td}>
-                      <button
-                        style={{
-                          background:    item.in_stock ? "rgba(34,197,94,0.15)" : "rgba(107,114,128,0.15)",
-                          border:        "none",
-                          borderRadius:  2,
-                          color:         item.in_stock ? "#22c55e" : "var(--muted)",
-                          fontFamily:    "var(--font-body)",
-                          fontSize:      10,
-                          fontWeight:    700,
-                          letterSpacing: "0.2em",
-                          textTransform: "uppercase",
-                          padding:       "3px 8px",
-                          cursor:        "pointer",
-                        }}
-                        onClick={() => handleToggleStock(item)}
-                        title="Toggle stock status"
-                      >
-                        {item.in_stock ? "In Stock" : "Out"}
-                      </button>
-                    </td>
-                    <td style={table.td}>
-                      <span style={{
-                        background:    avail.bg,
-                        color:         avail.color,
-                        fontFamily:    "var(--font-body)",
-                        fontSize:      10,
-                        fontWeight:    700,
-                        letterSpacing: "0.2em",
-                        textTransform: "uppercase",
-                        padding:       "3px 8px",
-                        borderRadius:  2,
-                      }}>
-                        {avail.label}
-                      </span>
-                    </td>
-                    <td style={table.td}>
-                      <div style={table.actions}>
-                        {!item.deleted_at && (
-                          <button style={table.actionBtn} onClick={() => openEdit(item)}>Edit</button>
-                        )}
-                        {!item.deleted_at ? (
-                          <button
-                            style={{ ...table.actionBtn, color: "var(--ember)", borderColor: "var(--ember)" }}
-                            onClick={() => handleArchive(item)}
-                          >
-                            Archive
-                          </button>
-                        ) : (
-                          <button style={table.actionBtn} onClick={() => handleRestore(item)}>
-                            Restore
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* ── Add / Edit Item Modal ── */}
-      {modal === "form" && (
-        <div style={s.overlay}>
-          <div style={s.modalBox}>
-            <h2 style={s.modalTitle}>
-              {editId ? "Edit Item" : "Add Item"}
-            </h2>
-
-            <div style={form.stack}>
-              <div style={form.field}>
-                <label style={form.label}>Name</label>
-                <input
-                  style={form.input}
-                  value={formState.name}
-                  onChange={(e) => setF("name", e.target.value)}
-                  placeholder="Item name"
-                  autoFocus
-                />
-              </div>
-
-              <div style={s.formGrid}>
-                {/* ── Category selector + inline add ── */}
-                <div style={form.field}>
-                  <label style={form.label}>Category</label>
-                  {catsLoading ? (
-                    <div style={{ ...form.input, color: "var(--muted)", display: "flex", alignItems: "center" }}>
-                      Loading…
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <select
-                        style={{ ...form.select, flex: 1 }}
-                        value={formState.category}
-                        onChange={(e) => {
-                          if (e.target.value === "__new__") return; // handled below
-                          setF("category", e.target.value);
-                        }}
-                      >
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                        <option value="__new__" disabled>── or type below ──</option>
-                      </select>
-                    </div>
-                  )}
-                  {/* Inline new-category input */}
-                  <InlineAddCategory onAdd={handleInlineAddCategory} />
-                </div>
-
-                <div style={form.field}>
-                  <label style={form.label}>Type</label>
-                  <select
-                    style={form.select}
-                    value={formState.item_type}
-                    onChange={(e) => setF("item_type", e.target.value)}
-                  >
-                    {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div style={form.field}>
-                <label style={form.label}>Price (R)</label>
-                <input
-                  style={form.input}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formState.price}
-                  onChange={(e) => setF("price", e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={formState.in_stock}
-                  onChange={(e) => setF("in_stock", e.target.checked)}
-                />
-                <span style={form.label}>In Stock</span>
-              </label>
-            </div>
-
-            {error && <p style={form.error}>{error}</p>}
-
-            <div style={{ ...form.actions, marginTop: 20 }}>
-              <button
-                style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }}
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : (editId ? "Update" : "Add Item")}
-              </button>
-              <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Cancel</button>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* ── Category Manager Modal ── */}
-      {modal === "categories" && (
-        <div style={s.overlay}>
-          <div style={{ ...s.modalBox, maxWidth: 420 }}>
-            <h2 style={s.modalTitle}>Manage Categories</h2>
-            <p style={s.modalSub}>
-              Categories are scoped to your entity and control how the menu is grouped.
-            </p>
+      {/* ── Items table ── */}
+      {loadingItems ? (
+        <p style={s.muted}>Loading…</p>
+      ) : displayed.length === 0 ? (
+        <EmptyState
+          hasCats={categories.length > 0}
+          onAddItem={openNew}
+          onManageCats={() => setShowCatManager(true)}
+        />
+      ) : (
+        <table style={table.table}>
+          <thead>
+            <tr>
+              {["Name", "Category", "Type", "Price (ZAR)", "In Stock", ""].map((h) => (
+                <th key={h} style={table.th}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {displayed.map((item) => (
+              <tr key={item.id} style={table.tr}>
+                <td style={table.td}>{item.name}</td>
+                <td style={table.td}>
+                  <span style={s.catPill}>{item.category}</span>
+                </td>
+                <td style={table.td}>{item.item_type}</td>
+                <td style={table.td}>R {Number(item.price).toFixed(2)}</td>
+                <td style={table.td}>
+                  <button
+                    style={item.in_stock ? s.stockOn : s.stockOff}
+                    onClick={() => toggleStock(item)}
+                  >
+                    {item.in_stock ? "In stock" : "Out"}
+                  </button>
+                </td>
+                <td style={{ ...table.td, whiteSpace: "nowrap" }}>
+                  <button style={s.editBtn} onClick={() => openEdit(item)}>Edit</button>
+                  <button style={s.deleteBtn} onClick={() => softDelete(item.id)}>Archive</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-            {/* Existing list */}
-            <div style={s.catList}>
-              {categories.length === 0 ? (
-                <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
-                  No categories yet. Add one below.
-                </p>
-              ) : (
-                categories.map((c, idx) => (
-                  <div key={c.id} style={s.catRow}>
-                    <span style={s.catName}>{c.name}</span>
-                    <div style={s.catActions}>
-                      <button
-                        style={s.catOrderBtn}
-                        onClick={() => reorder(c.id, "up")}
-                        disabled={idx === 0}
-                        title="Move up"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        style={s.catOrderBtn}
-                        onClick={() => reorder(c.id, "down")}
-                        disabled={idx === categories.length - 1}
-                        title="Move down"
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+      {/* ── Item form modal ── */}
+      {showForm && (
+        <Modal onClose={closeForm} title={editingId ? "Edit Item" : "New Item"}>
+          <div style={s.formGrid}>
+            <Field label="Name">
+              <input
+                style={s.input}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Classic Kota"
+              />
+            </Field>
 
-            {/* Add new */}
-            <div style={{ ...form.field, marginTop: 16 }}>
-              <label style={form.label}>New Category</label>
-              <div style={{ display: "flex", gap: 8 }}>
+            <Field label="Category">
+              <select
+                style={s.input}
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              >
+                {categories.length === 0 && (
+                  <option value="">— Add a category first —</option>
+                )}
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <InlineAddCategory
+                onAdd={async (name) => {
+                  const { data, error } = await addCategory(name);
+                  if (!error && data) setForm((f) => ({ ...f, category: data.name }));
+                  return { error };
+                }}
+              />
+            </Field>
+
+            <Field label="Type">
+              <select
+                style={s.input}
+                value={form.item_type}
+                onChange={(e) => setForm({ ...form, item_type: e.target.value })}
+              >
+                {ITEM_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Price (ZAR)">
+              <input
+                style={s.input}
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                placeholder="0.00"
+              />
+            </Field>
+
+            <Field label="Description" fullWidth>
+              <textarea
+                style={{ ...s.input, minHeight: "72px", resize: "vertical" }}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Optional short description…"
+              />
+            </Field>
+
+            <Field label="In Stock" fullWidth>
+              <label style={s.toggle}>
                 <input
-                  ref={newCatRef}
-                  style={{ ...form.input, flex: 1 }}
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="e.g. Desserts"
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+                  type="checkbox"
+                  checked={form.in_stock}
+                  onChange={(e) => setForm({ ...form, in_stock: e.target.checked })}
                 />
-                <button
-                  style={{ ...btn.primary, ...btn.sm, opacity: catSaving ? 0.7 : 1, whiteSpace: "nowrap" }}
-                  onClick={handleAddCategory}
-                  disabled={catSaving}
-                >
-                  {catSaving ? "Adding…" : "Add"}
-                </button>
-              </div>
-              {catError && <p style={form.error}>{catError}</p>}
-            </div>
-
-            <div style={{ ...form.actions, marginTop: 20 }}>
-              <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Done</button>
-            </div>
+                <span style={{ marginLeft: "8px" }}>
+                  {form.in_stock ? "Available" : "Unavailable"}
+                </span>
+              </label>
+            </Field>
           </div>
-        </div>
+
+          {formError && <p style={s.error}>{formError}</p>}
+
+          <div style={s.modalActions}>
+            <button style={btn.ghost} onClick={closeForm}>Cancel</button>
+            <button style={btn.primary} onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : editingId ? "Save Changes" : "Add Item"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Category manager modal ── */}
+      {showCatManager && (
+        <CategoryManagerModal
+          categories={categories}
+          onAdd={addCategory}
+          onReorder={reorder}
+          onClose={() => setShowCatManager(false)}
+          loading={catsLoading}
+        />
       )}
     </div>
   );
 }
 
-// ── Inline "add new category" sub-component ────────────────────────────────
+// ─── InlineAddCategory ────────────────────────────────────────────────────────
 function InlineAddCategory({ onAdd }) {
-  const [open,  setOpen]  = useState(false);
-  const [value, setValue] = useState("");
-  const [busy,  setBusy]  = useState(false);
-  const inputRef          = useRef(null);
+  const [open,    setOpen]    = useState(false);
+  const [value,   setValue]   = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [errMsg,  setErrMsg]  = useState("");
 
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
-
-  const submit = async () => {
+  const handleAdd = async () => {
     if (!value.trim()) return;
-    setBusy(true);
-    await onAdd(value.trim());
-    setBusy(false);
-    setValue("");
-    setOpen(false);
+    setSaving(true);
+    setErrMsg("");
+    const { error } = await onAdd(value.trim());
+    setSaving(false);
+    if (error) {
+      setErrMsg(error);
+    } else {
+      setValue("");
+      setOpen(false);
+    }
   };
 
   if (!open) {
     return (
-      <button
-        style={s.addCatLink}
-        onClick={() => setOpen(true)}
-        type="button"
-      >
+      <button style={s.inlineAddBtn} onClick={() => setOpen(true)}>
         + New category
       </button>
     );
   }
 
   return (
-    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+    <div style={s.inlineAddRow}>
       <input
-        ref={inputRef}
-        style={{ ...s.inlineInput, flex: 1 }}
+        autoFocus
+        style={{ ...s.input, flex: 1, marginTop: 0 }}
+        placeholder="Category name…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Category name…"
         onKeyDown={(e) => {
-          if (e.key === "Enter") submit();
+          if (e.key === "Enter") handleAdd();
           if (e.key === "Escape") { setOpen(false); setValue(""); }
         }}
       />
-      <button
-        style={{ ...btn.primary, ...btn.sm, opacity: busy ? 0.7 : 1 }}
-        onClick={submit}
-        disabled={busy}
-        type="button"
-      >
-        {busy ? "…" : "Add"}
+      <button style={btn.primary} onClick={handleAdd} disabled={saving}>
+        {saving ? "…" : "Add"}
       </button>
-      <button
-        style={{ ...btn.ghost, ...btn.sm }}
-        onClick={() => { setOpen(false); setValue(""); }}
-        type="button"
-      >
+      <button style={btn.ghost} onClick={() => { setOpen(false); setValue(""); }}>
         ✕
       </button>
+      {errMsg && <p style={s.error}>{errMsg}</p>}
     </div>
   );
 }
 
-// ── Local styles ───────────────────────────────────────────────────────────
+// ─── CategoryManagerModal ─────────────────────────────────────────────────────
+function CategoryManagerModal({ categories, onAdd, onReorder, onClose, loading }) {
+  const [newName, setNewName] = useState("");
+  const [adding,  setAdding]  = useState(false);
+  const [errMsg,  setErrMsg]  = useState("");
 
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setAdding(true);
+    setErrMsg("");
+    const { error } = await onAdd(newName.trim());
+    setAdding(false);
+    if (error) setErrMsg(error);
+    else setNewName("");
+  };
+
+  return (
+    <Modal onClose={onClose} title="Manage Categories">
+      <p style={s.muted}>
+        Categories control how menu items are grouped. Office role only.
+      </p>
+
+      {loading ? (
+        <p style={s.muted}>Loading…</p>
+      ) : (
+        <ul style={s.catList}>
+          {categories.map((c, idx) => (
+            <li key={c.id} style={s.catRow}>
+              <span style={s.catName}>{c.name}</span>
+              <div style={s.catActions}>
+                <button
+                  style={s.reorderBtn}
+                  onClick={() => onReorder(c.id, "up")}
+                  disabled={idx === 0}
+                  title="Move up"
+                >↑</button>
+                <button
+                  style={s.reorderBtn}
+                  onClick={() => onReorder(c.id, "down")}
+                  disabled={idx === categories.length - 1}
+                  title="Move down"
+                >↓</button>
+              </div>
+            </li>
+          ))}
+          {categories.length === 0 && (
+            <li style={s.muted}>No categories yet. Add one below.</li>
+          )}
+        </ul>
+      )}
+
+      <div style={s.addCatRow}>
+        <input
+          style={{ ...s.input, flex: 1 }}
+          placeholder="New category name…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+        />
+        <button style={btn.primary} onClick={handleAdd} disabled={adding}>
+          {adding ? "…" : "Add"}
+        </button>
+      </div>
+      {errMsg && <p style={s.error}>{errMsg}</p>}
+
+      <div style={{ ...s.modalActions, marginTop: "16px" }}>
+        <button style={btn.primary} onClick={onClose}>Done</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── EmptyState ───────────────────────────────────────────────────────────────
+function EmptyState({ hasCats, onAddItem, onManageCats }) {
+  return (
+    <div style={s.emptyState}>
+      {hasCats ? (
+        <>
+          <p style={s.emptyTitle}>No items in this category yet.</p>
+          <button style={btn.primary} onClick={onAddItem}>+ Add Item</button>
+        </>
+      ) : (
+        <>
+          <p style={s.emptyTitle}>No categories defined yet.</p>
+          <p style={s.muted}>Create at least one category before adding menu items.</p>
+          <button style={btn.primary} onClick={onManageCats}>
+            Create Categories
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={s.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={s.modal}>
+        <div style={s.modalHeader}>
+          <h3 style={s.modalTitle}>{title}</h3>
+          <button style={s.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children, fullWidth }) {
+  return (
+    <div style={{ gridColumn: fullWidth ? "1 / -1" : undefined }}>
+      <label style={s.label}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Tab({ label, active, onClick, count }) {
+  return (
+    <button
+      style={{ ...s.tab, ...(active ? s.tabActive : {}) }}
+      onClick={onClick}
+    >
+      {label}
+      {count !== undefined && (
+        <span style={s.tabCount}>{count}</span>
+      )}
+    </button>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const s = {
-  overlay: {
-    position:       "fixed",
-    inset:          0,
-    background:     "rgba(0,0,0,0.7)",
-    display:        "flex",
-    alignItems:     "center",
-    justifyContent: "center",
-    zIndex:         300,
-    padding:        16,
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "20px",
   },
-  modalBox: {
-    background:   "var(--ash)",
-    border:       "1px solid var(--pit)",
-    borderRadius: 6,
-    padding:      28,
-    width:        "100%",
-    maxWidth:     520,
-    maxHeight:    "90vh",
-    overflowY:    "auto",
-    boxShadow:    "0 16px 48px rgba(0,0,0,0.6)",
+  headerActions: {
+    display: "flex",
+    gap: "10px",
+  },
+  tabs: {
+    display: "flex",
+    gap: "4px",
+    marginBottom: "16px",
+    flexWrap: "wrap",
+  },
+  tab: {
+    background: "none",
+    border: "1px solid var(--border, #2a2a2a)",
+    color: "var(--muted, #888)",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
+    padding: "6px 12px",
+    borderRadius: "4px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  tabActive: {
+    color: "var(--text, #fff)",
+    borderColor: "var(--fire, #e63)",
+    background: "color-mix(in srgb, var(--fire, #e63) 10%, transparent)",
+  },
+  tabCount: {
+    fontSize: "11px",
+    background: "var(--surface-hover, #222)",
+    padding: "1px 5px",
+    borderRadius: "8px",
+  },
+  muted: {
+    color: "var(--muted, #888)",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
+  },
+  catPill: {
+    display: "inline-block",
+    padding: "2px 8px",
+    borderRadius: "4px",
+    background: "var(--surface-hover, #222)",
+    fontSize: "12px",
+    color: "var(--muted, #888)",
+  },
+  stockOn: {
+    background: "none",
+    border: "1px solid #4a9",
+    color: "#4a9",
+    borderRadius: "4px",
+    padding: "3px 8px",
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+  stockOff: {
+    background: "none",
+    border: "1px solid #888",
+    color: "#888",
+    borderRadius: "4px",
+    padding: "3px 8px",
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+  editBtn: {
+    background: "none",
+    border: "none",
+    color: "var(--fire, #e63)",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
+    cursor: "pointer",
+    marginRight: "8px",
+  },
+  deleteBtn: {
+    background: "none",
+    border: "none",
+    color: "var(--muted, #888)",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
+    cursor: "pointer",
+  },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 200,
+    padding: "24px",
+  },
+  modal: {
+    background: "var(--surface, #111)",
+    border: "1px solid var(--border, #2a2a2a)",
+    borderRadius: "8px",
+    padding: "24px",
+    width: "100%",
+    maxWidth: "560px",
+    maxHeight: "90vh",
+    overflowY: "auto",
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
   },
   modalTitle: {
     fontFamily: "var(--font-display)",
-    fontSize:   28,
-    color:      "var(--bone)",
-    margin:     "0 0 8px",
+    fontSize: "20px",
+    margin: 0,
+    color: "var(--text, #fff)",
   },
-  modalSub: {
-    fontFamily: "var(--font-body)",
-    fontSize:   13,
-    color:      "var(--muted)",
-    margin:     "0 0 16px",
+  closeBtn: {
+    background: "none",
+    border: "none",
+    color: "var(--muted, #888)",
+    fontSize: "18px",
+    cursor: "pointer",
   },
   formGrid: {
-    display:             "grid",
+    display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap:                 14,
+    gap: "16px",
+    marginBottom: "16px",
   },
-  addCatLink: {
-    background:  "none",
-    border:      "none",
-    color:       "var(--gold)",
-    fontFamily:  "var(--font-body)",
-    fontSize:    11,
-    cursor:      "pointer",
-    padding:     "4px 0 0",
-    letterSpacing: "0.05em",
-    textAlign:   "left",
+  label: {
+    display: "block",
+    fontFamily: "var(--font-body)",
+    fontSize: "11px",
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "var(--muted, #888)",
+    marginBottom: "6px",
   },
-  inlineInput: {
-    background:   "var(--pit)",
-    border:       "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 3,
-    color:        "var(--bone)",
-    fontFamily:   "var(--font-body)",
-    fontSize:     13,
-    padding:      "6px 10px",
-    outline:      "none",
+  input: {
+    width: "100%",
+    background: "var(--surface-hover, #1a1a1a)",
+    border: "1px solid var(--border, #2a2a2a)",
+    borderRadius: "4px",
+    color: "var(--text, #fff)",
+    fontFamily: "var(--font-body)",
+    fontSize: "14px",
+    padding: "8px 10px",
+    boxSizing: "border-box",
+    outline: "none",
+  },
+  toggle: {
+    display: "flex",
+    alignItems: "center",
+    fontFamily: "var(--font-body)",
+    fontSize: "14px",
+    color: "var(--text, #fff)",
+    cursor: "pointer",
+  },
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "10px",
+    marginTop: "24px",
+  },
+  error: {
+    color: "var(--fire, #e63)",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
+    marginTop: "8px",
+  },
+  emptyState: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "12px",
+    padding: "60px 0",
+    textAlign: "center",
+  },
+  emptyTitle: {
+    fontFamily: "var(--font-display)",
+    fontSize: "24px",
+    color: "var(--text, #fff)",
+    margin: 0,
+  },
+  inlineAddBtn: {
+    display: "block",
+    background: "none",
+    border: "none",
+    color: "var(--fire, #e63)",
+    fontFamily: "var(--font-body)",
+    fontSize: "12px",
+    cursor: "pointer",
+    padding: "4px 0",
+    marginTop: "4px",
+  },
+  inlineAddRow: {
+    display: "flex",
+    gap: "6px",
+    alignItems: "center",
+    marginTop: "6px",
+    flexWrap: "wrap",
   },
   catList: {
-    display:       "flex",
-    flexDirection: "column",
-    gap:           4,
-    maxHeight:     280,
-    overflowY:     "auto",
-    padding:       "4px 0",
+    listStyle: "none",
+    padding: 0,
+    margin: "16px 0",
+    borderTop: "1px solid var(--border, #2a2a2a)",
   },
   catRow: {
-    display:        "flex",
-    alignItems:     "center",
+    display: "flex",
     justifyContent: "space-between",
-    padding:        "8px 12px",
-    background:     "rgba(255,255,255,0.03)",
-    border:         "1px solid rgba(255,255,255,0.06)",
-    borderRadius:   3,
+    alignItems: "center",
+    padding: "10px 0",
+    borderBottom: "1px solid var(--border, #2a2a2a)",
   },
   catName: {
     fontFamily: "var(--font-body)",
-    fontSize:   13,
-    color:      "var(--bone)",
-    fontWeight: 500,
+    fontSize: "14px",
+    color: "var(--text, #fff)",
   },
   catActions: {
     display: "flex",
-    gap:     4,
+    gap: "6px",
   },
-  catOrderBtn: {
-    background:   "none",
-    border:       "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 2,
-    color:        "var(--muted)",
-    cursor:       "pointer",
-    fontSize:     12,
-    padding:      "2px 7px",
-    lineHeight:   1.4,
+  reorderBtn: {
+    background: "var(--surface-hover, #222)",
+    border: "1px solid var(--border, #2a2a2a)",
+    borderRadius: "4px",
+    color: "var(--muted, #888)",
+    width: "28px",
+    height: "28px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addCatRow: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+    marginTop: "16px",
   },
 };

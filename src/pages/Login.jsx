@@ -1,8 +1,12 @@
 // src/pages/Login.jsx
-// FIX: reads role from session.user.app_metadata (set by auth hook)
-//      instead of profiles.role (column was removed)
-// FIX: sets window.location.hostname in user_metadata so the auth hook
-//      can resolve the correct entity on every token issuance
+//
+// Key fix: removed the supabase.auth.updateUser() call that was setting
+// user_metadata.origin. That call fired a USER_UPDATED auth event which caused
+// AuthProvider to re-run fetchOrCreateProfile, creating the duplicate-upsert loop.
+//
+// Role is now read directly from the signInWithPassword response — the
+// custom_access_token_hook writes entity_role into app_metadata at login time,
+// so it's always present in the session returned here.
 
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -24,8 +28,10 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    // 1. Sign in
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (signInError) {
       setError(signInError.message);
@@ -33,27 +39,12 @@ export default function Login() {
       return;
     }
 
-    // 2. Set origin in user_metadata so the auth hook can resolve the entity.
-    //    updateUser triggers a token refresh, and the hook fires again with the
-    //    origin set, writing entity_id + entity_role into app_metadata.
-    const origin = window.location.hostname;
-    const { data: updated, error: updateError } = await supabase.auth.updateUser({
-      data: { origin },
-    });
-
-    if (updateError) {
-      // Non-fatal: the fallback path in the hook uses existing memberships.
-      console.warn("Login: could not set origin metadata:", updateError.message);
-    }
-
-    // 3. Role comes from app_metadata (written by the auth hook on the server).
-    //    After updateUser the returned user object has the refreshed JWT claims.
-    const role = updated?.user?.app_metadata?.entity_role ?? null;
-
+    // Role is written into app_metadata by custom_access_token_hook at login time.
+    const role = data?.session?.user?.app_metadata?.entity_role ?? null;
     setLoading(false);
 
-    if (role === "clerk")  { navigate("/counter", { replace: true }); return; }
-    if (role === "office") { navigate("/office",  { replace: true }); return; }
+    if (role === "clerk")  return navigate("/counter", { replace: true });
+    if (role === "office") return navigate("/office",  { replace: true });
     navigate("/menu", { replace: true });
   };
 
@@ -63,58 +54,46 @@ export default function Login() {
   });
 
   return (
-    <div style={page.centered}>
-      <div style={page.cardAuth}>
-
-        <div style={page.eyebrow}>Est. in the Streets</div>
-        <h1 style={s.title} className="text-gradient">ROOIALTY</h1>
-        <div style={page.dividerCentered} />
+    <div style={page.centred}>
+      <div style={page.card}>
+        <p style={s.title}>ROOIALTY</p>
         <p style={s.subtitle}>Login to continue</p>
 
         <form onSubmit={handleLogin} style={form.stack}>
           <input
-            style={inputStyle("email")}
-            className="input-base"
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onFocus={() => setFocused("email")}
             onBlur={() => setFocused(null)}
+            style={inputStyle("email")}
             required
           />
           <input
-            style={inputStyle("password")}
-            className="input-base"
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setFocused("password")}
             onBlur={() => setFocused(null)}
+            style={inputStyle("password")}
             required
           />
-          <button
-            style={{ ...btn.primary, ...btn.full, opacity: loading ? 0.7 : 1 }}
-            className="btn-primary"
-            disabled={loading}
-          >
+
+          {error && <p style={s.error}>{error}</p>}
+
+          <button type="submit" style={btn.primary} disabled={loading}>
             {loading ? "Logging in…" : "Login"}
           </button>
         </form>
 
-        {error && <p style={form.error}>{error}</p>}
-
         <p style={s.linkText}>
           Don't have an account?{" "}
-          <span
-            onClick={() => navigate("/register", { replace: true })}
-            style={s.link}
-          >
+          <span style={s.link} onClick={() => navigate("/register")}>
             Register
           </span>
         </p>
-
       </div>
     </div>
   );
@@ -122,30 +101,35 @@ export default function Login() {
 
 const s = {
   title: {
-    fontFamily:    "var(--font-display)",
-    fontSize:      "56px",
-    lineHeight:    1,
+    fontFamily: "var(--font-display)",
+    fontSize: "56px",
+    lineHeight: 1,
     letterSpacing: "0.04em",
-    margin:        "0 0 12px",
+    margin: "0 0 12px",
   },
   subtitle: {
-    fontFamily:    "var(--font-body)",
-    fontSize:      "13px",
+    fontFamily: "var(--font-body)",
+    fontSize: "13px",
     letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color:         "var(--muted)",
-    marginBottom:  "24px",
+    color: "var(--muted)",
+    marginBottom: "24px",
+  },
+  error: {
+    color: "var(--fire)",
+    fontSize: "13px",
+    fontFamily: "var(--font-body)",
   },
   linkText: {
-    marginTop:     "20px",
-    fontSize:      "13px",
-    color:         "var(--muted)",
-    fontFamily:    "var(--font-body)",
+    marginTop: "20px",
+    fontSize: "13px",
+    color: "var(--muted)",
+    fontFamily: "var(--font-body)",
     letterSpacing: "0.05em",
   },
   link: {
-    color:          "var(--fire)",
-    cursor:         "pointer",
+    color: "var(--fire)",
+    cursor: "pointer",
     textDecoration: "none",
   },
 };
