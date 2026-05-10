@@ -14696,7 +14696,6 @@ export default function StockStatusBadge({ currentStock, reorderLevel }) {
 ===== FILE: C:\Users\tshep\Rooialty\src\context\AuthProvider.jsx =====
 
 // src/context/AuthProvider.jsx
-
 import { createContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -14704,70 +14703,53 @@ const AuthContext = createContext(null);
 export default AuthContext;
 
 async function fetchOrCreateProfile(user) {
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("id, email, username, phone, is_active, last_seen_at, created_at")
-    // NOTE: no 'role' column — it no longer exists on profiles
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (existing) return existing;
-
   const username =
     user.user_metadata?.username ??
     user.email?.split("@")[0] ??
     user.id.slice(0, 8);
 
-  const { data: created } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
-    .insert({ id: user.id, email: user.email ?? "", username })
-    .select()
-    .single();
+    .upsert(
+      { id: user.id, email: user.email ?? "", username },
+      { onConflict: "id", ignoreDuplicates: true }
+    )
+    .select("id, email, username, phone, is_active, last_seen_at, created_at")
+    .maybeSingle();
 
-  return created ?? null;
+  if (error) {
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id, email, username, phone, is_active, last_seen_at, created_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    return existing ?? null;
+  }
+
+  return data ?? null;
 }
 
 export function AuthProvider({ children }) {
-  const [user,     setUser]     = useState(null);
-  const [profile,  setProfile]  = useState(null);
-  const [loading,  setLoading]  = useState(true);
+  const [user,    setUser]    = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Derived from JWT app_metadata — set by the auth hook server-side
-  const entityId   = user?.app_metadata?.entity_id   ?? null;
-  const role       = user?.app_metadata?.entity_role  ?? null;
+  const entityId = user?.app_metadata?.entity_id  ?? null;
+  const role     = user?.app_metadata?.entity_role ?? null;
 
   useEffect(() => {
     let mounted = true;
 
-    const bootstrap = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        const sessionUser = session?.user ?? null;
-        setUser(sessionUser);
-        setLoading(false);
-        if (sessionUser) {
-          fetchOrCreateProfile(sessionUser)
-            .then((p) => { if (mounted) setProfile(p); })
-            .catch(console.error);
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        console.error("AuthProvider bootstrap error:", err);
-        if (mounted) setLoading(false);
-      }
-    };
-
-    bootstrap();
-
+    // onAuthStateChange fires INITIAL_SESSION on mount with the current
+    // session — this is the single source of truth, no getSession() needed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
-        if (event === "INITIAL_SESSION") return;
+
         const sessionUser = session?.user ?? null;
         setUser(sessionUser);
         setLoading(false);
+
         if (sessionUser) {
           fetchOrCreateProfile(sessionUser)
             .then((p) => { if (mounted) setProfile(p); })
@@ -14778,7 +14760,10 @@ export function AuthProvider({ children }) {
       }
     );
 
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -14820,9 +14805,11 @@ export function useCartContext() {
 import { useContext } from "react";
 import AuthContext from "../context/AuthProvider";
 
-export default function useAuth() {
+export function useAuth() {
   return useContext(AuthContext);
 }
+
+export default useAuth;
 
 ===== FILE: C:\Users\tshep\Rooialty\src\hooks\useCart.js =====
 
@@ -15137,6 +15124,69 @@ export default function useCart() {
     clearCart,
     fetchCart,
   };
+}
+
+===== FILE: C:\Users\tshep\Rooialty\src\hooks\useCategories.js =====
+
+// src/hooks/useCategories.js
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "../lib/supabaseClient";
+import useAuth from "./useAuth";
+
+export default function useCategories() {
+  const { entityId } = useAuth();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading]       = useState(true);
+
+  const load = useCallback(async () => {
+    if (!entityId) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("entity_categories")
+      .select("id, name, sort_order")
+      .order("sort_order", { ascending: true });
+    if (!error) setCategories(data ?? []);
+    setLoading(false);
+  }, [entityId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const addCategory = async (name) => {
+    const trimmed    = name.trim();
+    if (!trimmed) return { data: null, error: { message: "Name is required." } };
+    const duplicate  = categories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (duplicate)   return { data: duplicate, error: null }; // return existing silently
+
+    const sort_order = categories.length + 1;
+    const { data, error } = await supabase
+      .from("entity_categories")
+      .insert({ entity_id: entityId, name: trimmed, sort_order })
+      .select()
+      .single();
+
+    if (!error && data) setCategories((prev) => [...prev, data]);
+    return { data, error };
+  };
+
+  const reorder = async (id, direction) => {
+    const idx = categories.findIndex((c) => c.id === id);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= categories.length) return;
+
+    const updated = [...categories];
+    [updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]];
+    const reordered = updated.map((c, i) => ({ ...c, sort_order: i + 1 }));
+    setCategories(reordered);
+
+    await Promise.all(
+      reordered.map((c) =>
+        supabase.from("entity_categories").update({ sort_order: c.sort_order }).eq("id", c.id)
+      )
+    );
+  };
+
+  return { categories, loading, addCategory, reorder, reload: load };
 }
 
 ===== FILE: C:\Users\tshep\Rooialty\src\hooks\useIngredients.js =====
@@ -19438,20 +19488,23 @@ export default function OfficeLedger() {
 ===== FILE: C:\Users\tshep\Rooialty\src\pages\office\OfficeMenuItems.jsx =====
 
 // src/pages/office/OfficeMenuItems.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { btn } from "../../styles/components";
 import { office } from "../../styles/office";
 import { table } from "../../styles/table";
 import { form } from "../../styles/forms";
-import { useAuth } from "../../hooks/useAuth";
+import useAuth from "../../hooks/useAuth";
+import useCategories from "../../hooks/useCategories";
 
-const CATEGORIES = ["URBAN KOTAS", "ROOIALTY MEALS", "TO SHARE", "WINGS", "WING BAR", "COLD SERVES"];
-const ITEM_TYPES = ["food", "drink"];
-const EMPTY_FORM = { name: "", category: CATEGORIES[0], item_type: "food", price: "", in_stock: true };
+const ITEM_TYPES  = ["food", "drink"];
+const EMPTY_FORM  = { name: "", category: "", item_type: "food", price: "", in_stock: true };
 
 export default function OfficeMenuItems() {
-  const { entityId } = useAuth();
+  const { entityId }                            = useAuth();
+  const { categories, loading: catsLoading,
+          addCategory, reorder }                = useCategories();
+
   const [items,        setItems]        = useState([]);
   const [availability, setAvailability] = useState({});
   const [loading,      setLoading]      = useState(true);
@@ -19459,15 +19512,31 @@ export default function OfficeMenuItems() {
   const [filterCat,    setFilterCat]    = useState("all");
   const [filterType,   setFilterType]   = useState("all");
   const [search,       setSearch]       = useState("");
-  const [modal,        setModal]        = useState(null);
+  const [modal,        setModal]        = useState(null); // "form" | "categories"
   const [formState,    setFormState]    = useState(EMPTY_FORM);
   const [editId,       setEditId]       = useState(null);
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
 
+  // Category manager state
+  const [newCatName,   setNewCatName]   = useState("");
+  const [catSaving,    setCatSaving]    = useState(false);
+  const [catError,     setCatError]     = useState("");
+  const newCatRef                       = useRef(null);
+
+  // Seed form category when categories load and form has no category yet
+  useEffect(() => {
+    if (categories.length && !formState.category) {
+      setFormState((prev) => ({ ...prev, category: categories[0].name }));
+    }
+  }, [categories]);
+
   const load = useCallback(async () => {
     const [itemsRes] = await Promise.all([
-      supabase.from("items").select("id, name, category, item_type, price, in_stock, deleted_at").order("name"),
+      supabase
+        .from("items")
+        .select("id, name, category, item_type, price, in_stock, deleted_at")
+        .order("name"),
     ]);
 
     setItems(itemsRes.data || []);
@@ -19485,7 +19554,7 @@ export default function OfficeMenuItems() {
       avMap[line.item_id].servings.push(qty > 0 ? Math.floor(stock / qty) : 0);
     });
     Object.keys(avMap).forEach((id) => {
-      const servings = avMap[id].servings;
+      const servings       = avMap[id].servings;
       avMap[id].maxServings = servings.length ? Math.min(...servings) : 0;
     });
     setAvailability(avMap);
@@ -19495,36 +19564,55 @@ export default function OfficeMenuItems() {
   useEffect(() => { load(); }, [load]);
 
   const visible = items.filter((i) => {
-    if (!showDeleted && i.deleted_at) return false;
-    if (showDeleted && !i.deleted_at) return false;
-    if (filterCat !== "all" && i.category !== filterCat) return false;
+    if (!showDeleted &&  i.deleted_at) return false;
+    if ( showDeleted && !i.deleted_at) return false;
+    if (filterCat  !== "all" && i.category  !== filterCat)  return false;
     if (filterType !== "all" && i.item_type !== filterType) return false;
     if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
+  // ── Modal helpers ──────────────────────────────────────────────────────────
+
   const openAdd = () => {
-    setFormState(EMPTY_FORM); setEditId(null); setError(""); setModal("form");
+    setFormState({ ...EMPTY_FORM, category: categories[0]?.name ?? "" });
+    setEditId(null); setError(""); setModal("form");
   };
+
   const openEdit = (item) => {
-    setFormState({ name: item.name, category: item.category, item_type: item.item_type, price: item.price, in_stock: item.in_stock });
+    setFormState({
+      name:      item.name,
+      category:  item.category,
+      item_type: item.item_type,
+      price:     item.price,
+      in_stock:  item.in_stock,
+    });
     setEditId(item.id); setError(""); setModal("form");
   };
+
+  const openCategoryManager = () => {
+    setNewCatName(""); setCatError(""); setModal("categories");
+  };
+
+  // ── Save item ──────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!formState.name.trim()) { setError("Name is required."); return; }
     if (formState.price === "" || isNaN(Number(formState.price)) || Number(formState.price) < 0) {
       setError("Valid price is required."); return;
     }
+    if (!formState.category) { setError("Category is required."); return; }
+
     setSaving(true); setError("");
     const payload = {
       name:      formState.name.trim(),
-      category:  formState.category, // should become a dynamic fetch from distinct items.category values for entity_id = current_entity
+      category:  formState.category,
       item_type: formState.item_type,
       price:     Number(formState.price),
       in_stock:  formState.in_stock,
-      entity_id: entityId,   // ADD THIS
+      entity_id: entityId,
     };
+
     let err;
     if (editId) {
       ({ error: err } = await supabase.from("items").update(payload).eq("id", editId));
@@ -19536,6 +19624,29 @@ export default function OfficeMenuItems() {
     setModal(null);
     load();
   };
+
+  // ── Add new category inline from form ─────────────────────────────────────
+
+  const handleInlineAddCategory = async (rawName) => {
+    const { data, error } = await addCategory(rawName);
+    if (!error && data) {
+      setFormState((prev) => ({ ...prev, category: data.name }));
+    }
+  };
+
+  // ── Add category from manager ──────────────────────────────────────────────
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) { setCatError("Name is required."); return; }
+    setCatSaving(true); setCatError("");
+    const { error } = await addCategory(newCatName);
+    setCatSaving(false);
+    if (error) { setCatError(error.message); return; }
+    setNewCatName("");
+    newCatRef.current?.focus();
+  };
+
+  // ── Archive / restore / stock ──────────────────────────────────────────────
 
   const handleArchive = async (item) => {
     if (!confirm(`Archive "${item.name}"? It will be hidden from menus.`)) return;
@@ -19555,12 +19666,14 @@ export default function OfficeMenuItems() {
 
   const getAvailStatus = (item) => {
     const a = availability[item.id];
-    if (!a) return { label: "Untracked", color: "var(--muted)",  bg: "rgba(107,114,128,0.15)" };
+    if (!a)              return { label: "Untracked",         color: "var(--muted)",  bg: "rgba(107,114,128,0.15)" };
     if (a.maxServings > 0) return { label: `${a.maxServings} servings`, color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
-    return { label: "OUT", color: "var(--ember)", bg: "rgba(220,38,38,0.15)" };
+    return               { label: "OUT",                      color: "var(--ember)",  bg: "rgba(220,38,38,0.15)" };
   };
 
   const setF = (key, val) => setFormState((prev) => ({ ...prev, [key]: val }));
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div style={office.page}>
@@ -19572,6 +19685,13 @@ export default function OfficeMenuItems() {
           <h1 style={office.title}>Menu Items</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button
+            style={{ ...btn.ghost, fontSize: 12 }}
+            onClick={openCategoryManager}
+            title="Manage categories"
+          >
+            Categories
+          </button>
           <button
             style={{ ...btn.ghost, fontSize: 12 }}
             onClick={() => setShowDeleted((v) => !v)}
@@ -19600,7 +19720,9 @@ export default function OfficeMenuItems() {
           onChange={(e) => setFilterCat(e.target.value)}
         >
           <option value="all">All Categories</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categories.map((c) => (
+            <option key={c.id} value={c.name}>{c.name}</option>
+          ))}
         </select>
         <select
           style={office.toolbarSelect}
@@ -19706,30 +19828,62 @@ export default function OfficeMenuItems() {
         )}
       </div>
 
-      {/* ── Add / Edit Modal ── */}
+      {/* ── Add / Edit Item Modal ── */}
       {modal === "form" && (
         <div style={s.overlay}>
           <div style={s.modalBox}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--bone)", margin: "0 0 20px" }}>
+            <h2 style={s.modalTitle}>
               {editId ? "Edit Item" : "Add Item"}
             </h2>
 
             <div style={form.stack}>
               <div style={form.field}>
                 <label style={form.label}>Name</label>
-                <input style={form.input} value={formState.name} onChange={(e) => setF("name", e.target.value)} placeholder="Item name" />
+                <input
+                  style={form.input}
+                  value={formState.name}
+                  onChange={(e) => setF("name", e.target.value)}
+                  placeholder="Item name"
+                  autoFocus
+                />
               </div>
 
               <div style={s.formGrid}>
+                {/* ── Category selector + inline add ── */}
                 <div style={form.field}>
                   <label style={form.label}>Category</label>
-                  <select style={form.select} value={formState.category} onChange={(e) => setF("category", e.target.value)}>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  {catsLoading ? (
+                    <div style={{ ...form.input, color: "var(--muted)", display: "flex", alignItems: "center" }}>
+                      Loading…
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <select
+                        style={{ ...form.select, flex: 1 }}
+                        value={formState.category}
+                        onChange={(e) => {
+                          if (e.target.value === "__new__") return; // handled below
+                          setF("category", e.target.value);
+                        }}
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                        <option value="__new__" disabled>── or type below ──</option>
+                      </select>
+                    </div>
+                  )}
+                  {/* Inline new-category input */}
+                  <InlineAddCategory onAdd={handleInlineAddCategory} />
                 </div>
+
                 <div style={form.field}>
                   <label style={form.label}>Type</label>
-                  <select style={form.select} value={formState.item_type} onChange={(e) => setF("item_type", e.target.value)}>
+                  <select
+                    style={form.select}
+                    value={formState.item_type}
+                    onChange={(e) => setF("item_type", e.target.value)}
+                  >
                     {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -19737,11 +19891,23 @@ export default function OfficeMenuItems() {
 
               <div style={form.field}>
                 <label style={form.label}>Price (R)</label>
-                <input style={form.input} type="number" min="0" step="0.01" value={formState.price} onChange={(e) => setF("price", e.target.value)} placeholder="0.00" />
+                <input
+                  style={form.input}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formState.price}
+                  onChange={(e) => setF("price", e.target.value)}
+                  placeholder="0.00"
+                />
               </div>
 
               <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
-                <input type="checkbox" checked={formState.in_stock} onChange={(e) => setF("in_stock", e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={formState.in_stock}
+                  onChange={(e) => setF("in_stock", e.target.checked)}
+                />
                 <span style={form.label}>In Stock</span>
               </label>
             </div>
@@ -19749,7 +19915,11 @@ export default function OfficeMenuItems() {
             {error && <p style={form.error}>{error}</p>}
 
             <div style={{ ...form.actions, marginTop: 20 }}>
-              <button style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }} onClick={handleSave} disabled={saving}>
+              <button
+                style={{ ...btn.primary, ...btn.sm, opacity: saving ? 0.7 : 1 }}
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "Saving…" : (editId ? "Update" : "Add Item")}
               </button>
               <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Cancel</button>
@@ -19757,9 +19927,147 @@ export default function OfficeMenuItems() {
           </div>
         </div>
       )}
+
+      {/* ── Category Manager Modal ── */}
+      {modal === "categories" && (
+        <div style={s.overlay}>
+          <div style={{ ...s.modalBox, maxWidth: 420 }}>
+            <h2 style={s.modalTitle}>Manage Categories</h2>
+            <p style={s.modalSub}>
+              Categories are scoped to your entity and control how the menu is grouped.
+            </p>
+
+            {/* Existing list */}
+            <div style={s.catList}>
+              {categories.length === 0 ? (
+                <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+                  No categories yet. Add one below.
+                </p>
+              ) : (
+                categories.map((c, idx) => (
+                  <div key={c.id} style={s.catRow}>
+                    <span style={s.catName}>{c.name}</span>
+                    <div style={s.catActions}>
+                      <button
+                        style={s.catOrderBtn}
+                        onClick={() => reorder(c.id, "up")}
+                        disabled={idx === 0}
+                        title="Move up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        style={s.catOrderBtn}
+                        onClick={() => reorder(c.id, "down")}
+                        disabled={idx === categories.length - 1}
+                        title="Move down"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add new */}
+            <div style={{ ...form.field, marginTop: 16 }}>
+              <label style={form.label}>New Category</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  ref={newCatRef}
+                  style={{ ...form.input, flex: 1 }}
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="e.g. Desserts"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+                />
+                <button
+                  style={{ ...btn.primary, ...btn.sm, opacity: catSaving ? 0.7 : 1, whiteSpace: "nowrap" }}
+                  onClick={handleAddCategory}
+                  disabled={catSaving}
+                >
+                  {catSaving ? "Adding…" : "Add"}
+                </button>
+              </div>
+              {catError && <p style={form.error}>{catError}</p>}
+            </div>
+
+            <div style={{ ...form.actions, marginTop: 20 }}>
+              <button style={{ ...btn.ghost }} onClick={() => setModal(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// ── Inline "add new category" sub-component ────────────────────────────────
+function InlineAddCategory({ onAdd }) {
+  const [open,  setOpen]  = useState(false);
+  const [value, setValue] = useState("");
+  const [busy,  setBusy]  = useState(false);
+  const inputRef          = useRef(null);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  const submit = async () => {
+    if (!value.trim()) return;
+    setBusy(true);
+    await onAdd(value.trim());
+    setBusy(false);
+    setValue("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        style={s.addCatLink}
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        + New category
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+      <input
+        ref={inputRef}
+        style={{ ...s.inlineInput, flex: 1 }}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Category name…"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          if (e.key === "Escape") { setOpen(false); setValue(""); }
+        }}
+      />
+      <button
+        style={{ ...btn.primary, ...btn.sm, opacity: busy ? 0.7 : 1 }}
+        onClick={submit}
+        disabled={busy}
+        type="button"
+      >
+        {busy ? "…" : "Add"}
+      </button>
+      <button
+        style={{ ...btn.ghost, ...btn.sm }}
+        onClick={() => { setOpen(false); setValue(""); }}
+        type="button"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+// ── Local styles ───────────────────────────────────────────────────────────
 
 const s = {
   overlay: {
@@ -19773,20 +20081,90 @@ const s = {
     padding:        16,
   },
   modalBox: {
-    background:  "var(--ash)",
-    border:      "1px solid var(--pit)",
+    background:   "var(--ash)",
+    border:       "1px solid var(--pit)",
     borderRadius: 6,
-    padding:     28,
-    width:       "100%",
-    maxWidth:    520,
-    maxHeight:   "90vh",
-    overflowY:   "auto",
-    boxShadow:   "0 16px 48px rgba(0,0,0,0.6)",
+    padding:      28,
+    width:        "100%",
+    maxWidth:     520,
+    maxHeight:    "90vh",
+    overflowY:    "auto",
+    boxShadow:    "0 16px 48px rgba(0,0,0,0.6)",
+  },
+  modalTitle: {
+    fontFamily: "var(--font-display)",
+    fontSize:   28,
+    color:      "var(--bone)",
+    margin:     "0 0 8px",
+  },
+  modalSub: {
+    fontFamily: "var(--font-body)",
+    fontSize:   13,
+    color:      "var(--muted)",
+    margin:     "0 0 16px",
   },
   formGrid: {
     display:             "grid",
     gridTemplateColumns: "1fr 1fr",
     gap:                 14,
+  },
+  addCatLink: {
+    background:  "none",
+    border:      "none",
+    color:       "var(--gold)",
+    fontFamily:  "var(--font-body)",
+    fontSize:    11,
+    cursor:      "pointer",
+    padding:     "4px 0 0",
+    letterSpacing: "0.05em",
+    textAlign:   "left",
+  },
+  inlineInput: {
+    background:   "var(--pit)",
+    border:       "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 3,
+    color:        "var(--bone)",
+    fontFamily:   "var(--font-body)",
+    fontSize:     13,
+    padding:      "6px 10px",
+    outline:      "none",
+  },
+  catList: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           4,
+    maxHeight:     280,
+    overflowY:     "auto",
+    padding:       "4px 0",
+  },
+  catRow: {
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    padding:        "8px 12px",
+    background:     "rgba(255,255,255,0.03)",
+    border:         "1px solid rgba(255,255,255,0.06)",
+    borderRadius:   3,
+  },
+  catName: {
+    fontFamily: "var(--font-body)",
+    fontSize:   13,
+    color:      "var(--bone)",
+    fontWeight: 500,
+  },
+  catActions: {
+    display: "flex",
+    gap:     4,
+  },
+  catOrderBtn: {
+    background:   "none",
+    border:       "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 2,
+    color:        "var(--muted)",
+    cursor:       "pointer",
+    fontSize:     12,
+    padding:      "2px 7px",
+    lineHeight:   1.4,
   },
 };
 
