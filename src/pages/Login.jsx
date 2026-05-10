@@ -1,12 +1,7 @@
 // src/pages/Login.jsx
-//
-// Key fix: removed the supabase.auth.updateUser() call that was setting
-// user_metadata.origin. That call fired a USER_UPDATED auth event which caused
-// AuthProvider to re-run fetchOrCreateProfile, creating the duplicate-upsert loop.
-//
-// Role is now read directly from the signInWithPassword response — the
-// custom_access_token_hook writes entity_role into app_metadata at login time,
-// so it's always present in the session returned here.
+// FIX: removed supabase.auth.updateUser() — that call fired USER_UPDATED which
+// caused AuthProvider to re-run fetchOrCreateProfile, creating the upsert loop.
+// Role is read directly from signInWithPassword's returned session instead.
 
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -39,7 +34,6 @@ export default function Login() {
       return;
     }
 
-    // Role is written into app_metadata by custom_access_token_hook at login time.
     const role = data?.session?.user?.app_metadata?.entity_role ?? null;
     setLoading(false);
 
@@ -56,6 +50,7 @@ export default function Login() {
   return (
     <div style={page.centred}>
       <div style={page.card}>
+        <p style={s.tagline}>Est. in the Streets</p>
         <p style={s.title}>ROOIALTY</p>
         <p style={s.subtitle}>Login to continue</p>
 
@@ -100,6 +95,14 @@ export default function Login() {
 }
 
 const s = {
+  tagline: {
+    fontFamily: "var(--font-body)",
+    fontSize: "11px",
+    letterSpacing: "0.2em",
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    margin: "0 0 4px",
+  },
   title: {
     fontFamily: "var(--font-display)",
     fontSize: "56px",
