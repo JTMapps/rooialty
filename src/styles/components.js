@@ -1,14 +1,11 @@
-// ─────────────────────────────────────────────
-//  src/styles/components.js
-//  Reusable JS style objects.
-//  All values reference CSS variables so dark-mode / theming
-//  is controlled from index.css in one place.
+// src/styles/components.js
+// Reusable JS style objects.
+// All values reference CSS variables so dark-mode / theming
+// is controlled from index.css in one place.
 //
-//  Usage:
-//    import { btn, input, card } from '../styles/components'
-//    <button style={btn.primary}>Place Order</button>
-//    <button style={{ ...btn.primary, ...btn.sm }}>Go</button>
-// ─────────────────────────────────────────────
+// FIX: replaced `border: shorthand` with explicit borderWidth/borderStyle/borderColor
+// on _inputBase so that spreading `focused: { borderColor }` on top doesn't
+// cause the "Removing a style property during rerender" React warning.
 
 // ── Shared reset applied to every button ──────────────────────
 const _btnBase = {
@@ -41,7 +38,6 @@ export const btn = {
     padding:         '14px 24px',
     background:      'var(--fire)',
     color:           '#000',
-    // Hover handled via CSS class .btn-primary:hover in index.css
   },
 
   // Secondary: outlined fire — secondary actions
@@ -96,11 +92,17 @@ export const btn = {
 };
 
 // ── Input / Textarea ──────────────────────────────────────────
+// FIX: use explicit longhands (borderWidth + borderStyle + borderColor)
+// instead of the `border` shorthand. This prevents React from warning about
+// "removing borderColor when a conflicting border property is set" when the
+// `focused` override is spread on top during a re-render.
 const _inputBase = {
   width:           '100%',
   padding:         '10px 12px',
   background:      '#161616',
-  border:          '1px solid var(--pit)',
+  borderWidth:     '1px',          // ← was: border: '1px solid var(--pit)'
+  borderStyle:     'solid',
+  borderColor:     'var(--pit)',   // ← now a longhand, safe to override
   borderRadius:    '3px',
   color:           'var(--bone)',
   fontFamily:      "var(--font-sans)",
@@ -113,7 +115,7 @@ const _inputBase = {
 export const input = {
   base: _inputBase,
 
-  // Use these for focus — apply via onFocus / onBlur or CSS class
+  // Spread these on focus — no longer conflicts with the base border
   focused: { borderColor: 'var(--fire)' },
   error:   { borderColor: 'var(--ember)' },
 };
@@ -179,41 +181,8 @@ export const layout = {
   },
 };
 
-// ── Typography helpers ────────────────────────────────────────
-export const text = {
-  heading: {
-    fontFamily:  'var(--font-display)',
-    letterSpacing: '0.04em',
-    color:       'var(--bone)',
-    margin:      0,
-    lineHeight:  1,
-  },
-  label: {
-    fontFamily:   'var(--font-body)',
-    fontSize:     '11px',
-    fontWeight:   700,
-    letterSpacing:'0.3em',
-    textTransform:'uppercase',
-    color:        'var(--muted)',
-  },
-  price: {
-    fontFamily:   'var(--font-display)',
-    fontSize:     '22px',
-    color:        'var(--gold)',
-    letterSpacing:'0.04em',
-  },
-  error: {
-    color:      'var(--ember)',
-    fontSize:   '13px',
-    marginTop:  '8px',
-    fontFamily: 'var(--font-sans)',
-  },
-  link: {
-    color:   'var(--fire)',
-    cursor:  'pointer',
-    textDecoration: 'none',
-  },
-};
+//badges
+
 
 // ── Status badges ─────────────────────────────────────────────
 const _badgeBase = {
@@ -236,71 +205,33 @@ export const badge = {
   cancelled: { ..._badgeBase, background: '#ef4444', color: '#fff' },
 };
 
-// ── Divider ───────────────────────────────────────────────────
-export const divider = {
-  fire: {
-    width:      '48px',
-    height:     '2px',
-    background: 'var(--fire)',
-    margin:     '0 0 24px',
-  },
-  full: {
-    width:      '100%',
-    height:     '1px',
-    background: 'var(--pit)',
-    margin:     '16px 0',
-  },
-};
 
-// ── Header ────────────────────────────────────────────────────
-export const header = {
-  wrapper: {
-    position:    'sticky',
-    top:         0,
-    zIndex:      100,
-    background:  'var(--smoke)',
-    borderBottom:'1px solid var(--pit)',
-    padding:     '16px 24px',
-    textAlign:   'center',
+// ── Typography helpers ────────────────────────────────────────
+export const text = {
+  heading: {
+    fontFamily:  'var(--font-display)',
+    letterSpacing: '0.04em',
+    color:       'var(--bone)',
+    margin:      0,
+    lineHeight:  1,
   },
-  eyebrow: {
+  label: {
     fontFamily:   'var(--font-body)',
     fontSize:     '11px',
-    fontWeight:   600,
-    letterSpacing:'0.35em',
+    fontWeight:   700,
+    letterSpacing:'0.3em',
     textTransform:'uppercase',
-    color:        'var(--fire)',
-    marginBottom: '4px',
-  },
-  title: {
-    fontFamily:   'var(--font-display)',
-    fontSize:     'clamp(48px, 10vw, 96px)',
-    lineHeight:   0.9,
-    background:   'linear-gradient(160deg, #fff 30%, #f59e0b 70%, #f97316 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor:  'transparent',
-    backgroundClip:       'text',
-    letterSpacing:        '0.02em',
-    margin:               '0',
-  },
-  sub: {
-    fontFamily:   'var(--font-body)',
-    fontSize:     '13px',
-    letterSpacing:'0.25em',
     color:        'var(--muted)',
-    textTransform:'uppercase',
-    marginTop:    '8px',
   },
-  tag: {
-    display:      'inline-block',
-    marginTop:    '12px',
-    padding:      '4px 12px',
-    border:       '1px solid var(--fire)',
-    borderRadius: '2px',
-    fontFamily:   'var(--font-body)',
-    fontSize:     '11px',
-    letterSpacing:'0.2em',
+  price: {
+    fontFamily:   'var(--font-display)',
+    fontSize:     '20px',
+    letterSpacing:'0.04em',
     color:        'var(--fire)',
-    textTransform:'uppercase',
+  },
+  muted: {
+    fontFamily:  'var(--font-body)',
+    fontSize:    '13px',
+    color:       'var(--muted)',
   },
 };

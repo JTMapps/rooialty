@@ -146,15 +146,6 @@
   {
     "schema_name": "public",
     "table_name": "carts",
-    "column_name": "delivery_type",
-    "data_type": "delivery_type",
-    "nullability": "NULL",
-    "column_default": null,
-    "column_definition": "delivery_type NULL"
-  },
-  {
-    "schema_name": "public",
-    "table_name": "carts",
     "column_name": "entity_id",
     "data_type": "uuid",
     "nullability": "NOT NULL",

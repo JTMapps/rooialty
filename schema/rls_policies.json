@@ -141,6 +141,16 @@
   },
   {
     "schema_name": "public",
+    "policy_name": "entity_categories: office insert",
+    "for_command": "INSERT",
+    "role_name": null,
+    "permissive": true,
+    "using_expression": null,
+    "with_check_expression": "((entity_id = current_entity_id()) AND (auth_role() = 'office'::user_role))",
+    "policy_definition_text": "CREATE POLICY \"entity_categories: office insert\" ON public.entity_categories FOR INSERT TO PUBLIC USING (TRUE) WITH CHECK (((entity_id = current_entity_id()) AND (auth_role() = 'office'::user_role)))"
+  },
+  {
+    "schema_name": "public",
     "policy_name": "entity_categories: office update",
     "for_command": "UPDATE",
     "role_name": null,

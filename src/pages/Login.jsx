@@ -1,8 +1,17 @@
 // src/pages/Login.jsx
-// FIX: reads role from session.user.app_metadata (set by auth hook)
-//      instead of profiles.role (column was removed)
-// FIX: sets window.location.hostname in user_metadata so the auth hook
-//      can resolve the correct entity on every token issuance
+//
+// CHANGES
+// ───────
+// • Origin resolution: reads VITE_ORIGIN env var first, falls back to
+//   window.location.hostname. This lets local dev send "rooialty.vercel.app"
+//   so the auth hook resolves the correct entity without a Vercel deploy.
+//
+// • Removed the role-from-updateUser read. After updateUser() the USER_UPDATED
+//   event fires in AuthProvider, which updates `user` in context. We navigate
+//   based on the role that comes back from the refreshed session directly.
+//   Using refreshSession() instead of reading updateUser()'s return value is
+//   more reliable because updateUser may return before the hook finishes
+//   writing app_metadata.
 
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -10,6 +19,13 @@ import { useNavigate } from "react-router-dom";
 import { btn, input } from "../styles/components";
 import { page } from "../styles/page";
 import { form } from "../styles/forms";
+
+// Prefer the explicit env override (for local dev), fall back to the actual hostname.
+// In .env.local set: VITE_ORIGIN=rooialty.vercel.app
+// On Vercel this var is not set, so window.location.hostname ("rooialty.vercel.app") is used.
+function getOrigin() {
+  return import.meta.env.VITE_ORIGIN || window.location.hostname;
+}
 
 export default function Login() {
   const [email,    setEmail]    = useState("");
@@ -25,7 +41,10 @@ export default function Login() {
     setLoading(true);
 
     // 1. Sign in
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (signInError) {
       setError(signInError.message);
@@ -33,22 +52,30 @@ export default function Login() {
       return;
     }
 
-    // 2. Set origin in user_metadata so the auth hook can resolve the entity.
-    //    updateUser triggers a token refresh, and the hook fires again with the
-    //    origin set, writing entity_id + entity_role into app_metadata.
-    const origin = window.location.hostname;
-    const { data: updated, error: updateError } = await supabase.auth.updateUser({
+    // 2. Stamp the origin into user_metadata so the custom_access_token_hook
+    //    knows which entity to bind to this session.
+    //    VITE_ORIGIN lets local dev send the production domain.
+    const origin = getOrigin();
+    const { error: updateError } = await supabase.auth.updateUser({
       data: { origin },
     });
 
     if (updateError) {
-      // Non-fatal: the fallback path in the hook uses existing memberships.
       console.warn("Login: could not set origin metadata:", updateError.message);
     }
 
-    // 3. Role comes from app_metadata (written by the auth hook on the server).
-    //    After updateUser the returned user object has the refreshed JWT claims.
-    const role = updated?.user?.app_metadata?.entity_role ?? null;
+    // 3. Refresh the session so app_metadata (entity_id, entity_role) contains
+    //    the values written by the hook in step 2.
+    //    updateUser triggers USER_UPDATED + TOKEN_REFRESHED but the hook runs
+    //    server-side async, so the returned session may not yet have the new
+    //    claims. refreshSession() gives the hook a clean shot.
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.warn("Login: session refresh error:", refreshError.message);
+    }
+
+    const role = refreshed?.session?.user?.app_metadata?.entity_role ?? null;
 
     setLoading(false);
 
